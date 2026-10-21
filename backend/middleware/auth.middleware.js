@@ -4,9 +4,9 @@ const authMiddleware = (req , res , next)=>{
     try {
         const authHeader =  req.headers.authorization
 
-        if(!authHeader){
+        if(!authHeader || !authHeader.startsWith("Bearer ")){
              return res.status(401).json({
-                message: "No token provided"
+                message: "No valid authorisation token provided "
             });
         }
         
@@ -17,6 +17,13 @@ const authMiddleware = (req , res , next)=>{
             token, 
             process.env.JWT_SECRET
         )
+
+        if(!decoded || !Number.isInteger(decoded.userId) || typeof decoded.role !== "string"){
+            return res.status(401).json({
+                message: "Invalid token payload",
+            })
+        }
+
         req.user = decoded
         
          next();
