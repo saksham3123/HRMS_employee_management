@@ -1,21 +1,24 @@
 import { apiRequest } from "./api";
 
+// Login user or admin
+export const loginUser = async (email, password) => {
+  const data = await apiRequest("/users/login", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  });
 
-export const loginUser = async (email , password) => {
-    const data = await apiRequest("/users/login" , {
-        method: "POST" , 
-        body: JSON.stringify({
-            email, 
-            password,
-        }),
-    })
+  if (!data?.token || !data?.user) {
+    throw new Error("Login failed. Please try again.");
+  }
 
-      localStorage.setItem("token", data.token);
+  localStorage.setItem("token", data.token);
   localStorage.setItem("user", JSON.stringify(data.user));
 
   return data;
-    
-}
+};
 
 // Logout user or admin
 export const logoutUser = () => {

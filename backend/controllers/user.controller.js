@@ -99,45 +99,113 @@ export const loginUser = async (req, res) => {
 
 }
 
-
 export const registerUser = async (req, res) => {
+    const client = await pool.connect();
+
     try {
 
         const { name, email, password } = req.body;
 
+
+        if (
+            typeof name !== "string" ||
+            !name.trim() ||
+            typeof email !== "string" ||
+            !email.trim() ||
+            typeof password !== "string" ||
+            !password
+        ) {
+            return res.status(400).json({
+                message: "Name, email and password are required",
+            });
+        }
+
+
+        const normalizedName = name.trim();
+        const normalizedEmail = email.trim().toLowerCase();
+
+
+        await client.query("BEGIN")
+
         // checked if user already exists
 
-        const existingUser = await User.findOne({ email })
+        const existingUser = await client.query(
+            `SELECT id FROM users WHERE LOWER(email) = LOWER($1)`,
+            [normalizedEmail]
+        );
 
 
-        if (existingUser) {
-            return res.status(400).json({
-                message: "User already exists"
-            })
+        if (existingUser.rows.length > 0) {
+            await client.query("ROLLBACK");
+
+            return res.status(409).json({
+                message: "User already exists",
+            });
         }
+
+
+        const roleResult = await client.query(
+            `SELECT id FROM roles WHERE name = $1`,
+            ["employee"]
+        );
+
+
+
+        if (roleResult.rows.length === 0) {
+            throw new Error("Employee role not found in the roles table");
+        }
+
+
+
+
+
 
 
         //hash password
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
+
         // create user
 
-        const user = await User.create({
-            name,
-            email,
-            password: hashedPassword,
-            role: "user"
-        })
+        const userResult = await client.query(
+            `INSERT INTO users (name, email, password)
+             VALUES ($1, $2, $3)
+             RETURNING id, name, email`,
+            [normalizedName, normalizedEmail, hashedPassword]
+        );
+
+          const user = userResult.rows[0];
+
+       const employeeNumber = `EMP-${String(user.id).padStart(4, "0")}`;
+
+await client.query(
+    `INSERT INTO employees (user_id, employee_number, joining_date)
+     VALUES ($1, $2, CURRENT_DATE)`,
+    [user.id, employeeNumber]
+);;
+
+
+      
+
+        await client.query(
+            `INSERT INTO user_roles (user_id, role_id)
+             VALUES ($1, $2)`,
+            [user.id, roleResult.rows[0].id]
+        );
+
+        await client.query("COMMIT");
+
 
 
         res.status(201).json({
             message: "User registered sucessfully",
             user: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
-                role: user.role,
+                role: "employee",
+
             }
         })
 
@@ -148,11 +216,23 @@ export const registerUser = async (req, res) => {
 
 
     } catch (error) {
+        await client.query("ROLLBACK");
+
+        if (error.code === "23505") {
+            return res.status(409).json({
+                message: "Email is already in use",
+            });
+        }
+
+        console.error("PostgreSQL registerUser error:", error);
 
         res.status(500).json({
-            message: error.message
+            message: "Failed to register user",
         })
 
+    }
+    finally {
+        client.release()
     }
 
 }
@@ -179,10 +259,10 @@ export const getProfile = async (req, res) => {
 
         const user = result.rows[0]
 
-      
+
 
         if (!user) {
-            return res.status(401).json({
+            return res.status(404).json({
                 message: "User not found"
 
             })
@@ -212,31 +292,58 @@ export const updateProfile = async (req, res) => {
     try {
 
         const { name, email } = req.body
+        const userId = req.user.userId;
 
-        const user = await User.findById(req.user.userId)
+
+        if (
+            (name !== undefined &&
+                (typeof name !== "string" || !name.trim())) ||
+            (email !== undefined &&
+                (typeof email !== "string" || !email.trim()))
+        ) {
+            return res.status(400).json({
+                message: "Name and email must be non-empty strings",
+            });
+        }
+
+
+        if (name === undefined && email === undefined) {
+            return res.status(400).json({
+                message: "Provide a name or email to update",
+            });
+        }
+
+
+        const result = await pool.query(
+            `UPDATE users
+             SET
+                 name = COALESCE($1, name),
+                 email = COALESCE($2, email),
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $3
+             RETURNING id, name, email`,
+            [
+                name === undefined ? null : name.trim(),
+                email === undefined ? null : email.trim(),
+                userId,
+            ]
+        );
+
+        const user = result.rows[0];
+
 
         if (!user) {
-            res.status(404).json({
-                message: "User not found"
-            })
-        }
-
-        if (name) {
-            user.name = name
-
-        }
-
-        if (email) {
-            user.email = email
+            return res.status(404).json({
+                message: "User not found",
+            });
         }
 
 
-        await user.save()
 
         res.status(200).json({
             message: "user profile updated",
             user: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email
 
@@ -246,8 +353,17 @@ export const updateProfile = async (req, res) => {
 
     } catch (error) {
 
+        if (error.code === "23505") {
+            return res.status(409).json({
+                message: "Email is already in use",
+            });
+        }
+
+        console.error("PostgreSQL updateProfile error:", error);
+
+
         res.status(500).json({
-            message: error.message
+            message: "Failed to update user profile",
         })
 
 
@@ -257,19 +373,42 @@ export const updateProfile = async (req, res) => {
 
 export const getAllUsers = async (req, res) => {
     try {
+        const result = await pool.query(
+            `SELECT
+                u.id,
+                u.name,
+                u.email,
+                u.is_active,
+                u.created_at,
+                COALESCE(
+                    ARRAY_AGG(DISTINCT r.name)
+                    FILTER (WHERE r.name IS NOT NULL),
+                    ARRAY[]::TEXT[]
+                ) AS roles
+             FROM users u
+             LEFT JOIN user_roles ur ON ur.user_id = u.id
+             LEFT JOIN roles r ON r.id = ur.role_id
+             GROUP BY
+                u.id,
+                u.name,
+                u.email,
+                u.is_active,
+                u.created_at
+             ORDER BY u.created_at DESC`
+        );
 
-        const users = await User.find().select("-password").sort({ createdAt: -1 })
+        return res.status(200).json({
+            count: result.rows.length,
+            users: result.rows,
+        });
 
-        res.status(200).json({
-            count: users.length,
-            users,
-        })
 
     } catch (error) {
-        return res.status(500).json({
-            message: error.message
-        })
+        console.error("PostgreSQL getAllUsers error:", error);
 
+        return res.status(500).json({
+            message: "Failed to retrieve users",
+        });
     }
 }
 
@@ -277,10 +416,13 @@ export const getAllUsers = async (req, res) => {
 
 
 export const deleteUser = async (req, res) => {
-    try {
-        const { userId } = req.params;
+    let client;
+    let transactionStarted = false;
 
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
+    try {
+        const userId = Number(req.params.userId);
+
+        if (!Number.isInteger(userId) || userId <= 0) {
             return res.status(400).json({
                 message: "Invalid user ID",
             });
@@ -288,43 +430,102 @@ export const deleteUser = async (req, res) => {
 
         if (userId === req.user.userId) {
             return res.status(400).json({
-                message: "You cannot delete your own account",
+                message: "You cannot deactivate your own account",
             });
         }
 
-        const user = await User.findById(userId);
+        client = await pool.connect();
+
+        await client.query("BEGIN");
+        transactionStarted = true;
+
+        // Lock the user row and check whether the account has an admin role.
+        const result = await client.query(
+            `SELECT
+                u.id,
+                u.name,
+                u.email,
+                u.is_active,
+                EXISTS (
+                    SELECT 1
+                    FROM user_roles ur
+                    JOIN roles r ON r.id = ur.role_id
+                    WHERE ur.user_id = u.id
+                      AND r.name = 'admin'
+                ) AS is_admin
+             FROM users u
+             WHERE u.id = $1
+             FOR UPDATE`,
+            [userId]
+        );
+
+        const user = result.rows[0];
 
         if (!user) {
+            await client.query("ROLLBACK");
+            transactionStarted = false;
+
             return res.status(404).json({
                 message: "User not found",
             });
         }
 
-        if (user.role === "admin") {
+        if (user.is_admin) {
+            await client.query("ROLLBACK");
+            transactionStarted = false;
+
             return res.status(403).json({
-                message: "Admin accounts cannot be deleted through this endpoint",
+                message: "Admin accounts cannot be deactivated through this endpoint",
             });
         }
 
-        // Delete the employee's attendance and payroll records first.
-        await Attendance.deleteMany({ userId: user._id });
+        if (!user.is_active) {
+            await client.query("ROLLBACK");
+            transactionStarted = false;
 
-        // Then delete the employee account.
-        await User.findByIdAndDelete(user._id);
+            return res.status(409).json({
+                message: "User is already inactive",
+            });
+        }
+
+        // Actually deactivate the account.
+        await client.query(
+            `UPDATE users
+             SET is_active = FALSE,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $1`,
+            [userId]
+        );
+
+        await client.query("COMMIT");
+        transactionStarted = false;
 
         return res.status(200).json({
-            message: "Employee and associated attendance records deleted successfully",
+            message: "User deactivated successfully",
             user: {
-                id: user._id,
+                id: user.id,
                 name: user.name,
                 email: user.email,
+                is_active: false,
             },
         });
     } catch (error) {
-        console.error("Delete user error:", error);
+        if (client && transactionStarted) {
+            try {
+                await client.query("ROLLBACK");
+            } catch (rollbackError) {
+                console.error("Rollback error:", rollbackError);
+            }
+        }
+
+        console.error("PostgreSQL deleteUser error:", error);
 
         return res.status(500).json({
-            message: error.message,
+            message: "Failed to deactivate user",
         });
+    } finally {
+        if (client) {
+            client.release();
+        }
     }
 };
