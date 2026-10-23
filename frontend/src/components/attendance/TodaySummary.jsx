@@ -1,14 +1,20 @@
 export default function TodaySummary({ attendance }) {
-  const workingHours = attendance?.workingHours ?? 0;
-  const dailyPay = attendance?.dailyPay ?? 0;
+  const workingHours =
+  attendance?.working_hours ?? attendance?.workingHours ?? 0;
+
+const dailyPay =
+  attendance?.daily_pay ?? attendance?.dailyPay ?? 0;
 
   let status = "Not clocked in";
 
-  if (attendance?.loginTime && !attendance?.logoutTime) {
-    status = "Currently working";
-  } else if (attendance?.loginTime && attendance?.logoutTime) {
-    status = "Shift completed";
-  }
+  const loginTime = attendance?.login_time ?? attendance?.loginTime;
+const logoutTime = attendance?.logout_time ?? attendance?.logoutTime;
+
+if (loginTime && !logoutTime) {
+  status = "Currently working";
+} else if (loginTime && logoutTime) {
+  status = "Shift completed";
+}
 
   const cards = [
     {

@@ -9,8 +9,13 @@ export default function AttendanceActions({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const hasClockedIn = Boolean(attendance?.loginTime);
-  const hasClockedOut = Boolean(attendance?.logoutTime);
+  const hasClockedIn = Boolean(
+  attendance?.login_time ?? attendance?.loginTime
+);
+
+const hasClockedOut = Boolean(
+  attendance?.logout_time ?? attendance?.logoutTime
+);
 
   const handleClockIn = async () => {
     setLoading(true);

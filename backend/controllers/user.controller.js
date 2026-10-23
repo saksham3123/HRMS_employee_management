@@ -1,8 +1,6 @@
-import User from "../model/user.model.js"
+
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
-import mongoose from "mongoose";
-import Attendance from "../model/attendance.model.js";
 import pool from "../config/postgres.js";
 
 export const loginUser = async (req, res) => {
@@ -100,9 +98,11 @@ export const loginUser = async (req, res) => {
 }
 
 export const registerUser = async (req, res) => {
-    const client = await pool.connect();
+    let client;
+    let transactionStarted = false;
 
     try {
+        client = await pool.connect();
 
         const { name, email, password } = req.body;
 
@@ -125,8 +125,8 @@ export const registerUser = async (req, res) => {
         const normalizedEmail = email.trim().toLowerCase();
 
 
-        await client.query("BEGIN")
-
+        await client.query("BEGIN");
+        transactionStarted = true;
         // checked if user already exists
 
         const existingUser = await client.query(
@@ -135,13 +135,14 @@ export const registerUser = async (req, res) => {
         );
 
 
-        if (existingUser.rows.length > 0) {
-            await client.query("ROLLBACK");
+       if (existingUser.rows.length > 0) {
+    await client.query("ROLLBACK");
+    transactionStarted = false;
 
-            return res.status(409).json({
-                message: "User already exists",
-            });
-        }
+    return res.status(409).json({
+        message: "User already exists",
+    });
+}
 
 
         const roleResult = await client.query(
@@ -175,18 +176,18 @@ export const registerUser = async (req, res) => {
             [normalizedName, normalizedEmail, hashedPassword]
         );
 
-          const user = userResult.rows[0];
+        const user = userResult.rows[0];
 
-       const employeeNumber = `EMP-${String(user.id).padStart(4, "0")}`;
+        const employeeNumber = `EMP-${String(user.id).padStart(4, "0")}`;
 
-await client.query(
-    `INSERT INTO employees (user_id, employee_number, joining_date)
+        await client.query(
+            `INSERT INTO employees (user_id, employee_number, joining_date)
      VALUES ($1, $2, CURRENT_DATE)`,
-    [user.id, employeeNumber]
-);;
+            [user.id, employeeNumber]
+        );;
 
 
-      
+
 
         await client.query(
             `INSERT INTO user_roles (user_id, role_id)
@@ -195,6 +196,7 @@ await client.query(
         );
 
         await client.query("COMMIT");
+transactionStarted = false;
 
 
 
@@ -215,27 +217,35 @@ await client.query(
 
 
 
-    } catch (error) {
-        await client.query("ROLLBACK");
-
-        if (error.code === "23505") {
-            return res.status(409).json({
-                message: "Email is already in use",
-            });
+    }  catch (error) {
+    if (client && transactionStarted) {
+        try {
+            await client.query("ROLLBACK");
+        } catch (rollbackError) {
+            console.error("Registration rollback error:", rollbackError);
         }
-
-        console.error("PostgreSQL registerUser error:", error);
-
-        res.status(500).json({
-            message: "Failed to register user",
-        })
-
-    }
-    finally {
-        client.release()
     }
 
+    if (error.code === "23505") {
+        return res.status(409).json({
+            message: "Email or employee number is already in use",
+        });
+    }
+
+    console.error("PostgreSQL registerUser error:", error);
+
+    return res.status(500).json({
+        message: "Failed to register user",
+    });
+} finally {
+    if (client) {
+        client.release();
+    }
 }
+}
+
+
+
 
 
 
@@ -279,9 +289,8 @@ export const getProfile = async (req, res) => {
         console.error("PostgreSQL getProfile error:", error);
 
         return res.status(500).json({
-            message: error.message
-
-        })
+            message: "Failed to retrieve user profile"
+        });
 
     }
 }
@@ -460,6 +469,8 @@ export const deleteUser = async (req, res) => {
         );
 
         const user = result.rows[0];
+
+
 
         if (!user) {
             await client.query("ROLLBACK");

@@ -8,10 +8,12 @@ dotenv.config();
 
 const createAdmin = async () => {
     try {
-        const email = "admin@email.com"
-        const password = "Admin@123"
+        const email = process.env.ADMIN_EMAIL;
+        const password = process.env.ADMIN_PASSWORD;
 
-
+        if (!email || !password) {
+            throw new Error("ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env");
+        }
         //Check weather this admin account already exists
         const existingAdmin = await pool.query(
             `SELECT id FROM users WHERE LOWER(email) = LOWER($1)`,
@@ -84,7 +86,7 @@ const createAdmin = async () => {
         process.exitCode = 1;
 
 
-    }finally{
+    } finally {
         await pool.end();
     }
 }

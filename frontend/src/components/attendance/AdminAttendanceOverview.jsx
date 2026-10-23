@@ -21,12 +21,12 @@ export default function AdminAttendanceOverview({
   error = "",
 }) {
   const currentlyWorking = records.filter(
-    (record) => record.loginTime && !record.logoutTime
-  );
+  (record) => record.login_time && !record.logout_time
+);
 
-  const clockedOut = records.filter(
-    (record) => record.loginTime && record.logoutTime
-  );
+const clockedOut = records.filter(
+  (record) => record.login_time && record.logout_time
+);
 
   if (loading) {
     return (
@@ -109,35 +109,34 @@ export default function AdminAttendanceOverview({
 
               <tbody className="divide-y divide-slate-100">
                 {records.map((record) => {
-                  const isWorking =
-                    Boolean(record.loginTime) && !record.logoutTime;
+                  const isWorking = Boolean(record.login_time) && !record.logout_time;
 
                   return (
-                    <tr key={record._id} className="hover:bg-slate-50">
+                    <tr key={record.id} className="hover:bg-slate-50">
                       <td className="px-5 py-4">
                         <p className="font-medium text-slate-900">
-                          {record.userId?.name || "Unknown employee"}
+                          {record.name || "Unknown employee"}
                         </p>
 
                         <p className="mt-1 text-xs text-slate-500">
-                          {record.userId?.email || "—"}
+                         {record.email || "—"}
                         </p>
                       </td>
 
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
-                        {formatTime(record.loginTime)}
+                        {formatTime(record.login_time)}
                       </td>
 
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
-                        {formatTime(record.logoutTime)}
+                        {formatTime(record.logout_time)}
                       </td>
 
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
-                        {Number(record.workingHours ?? 0).toFixed(2)}
+                        {Number(record.working_hours ?? 0).toFixed(2)}
                       </td>
 
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
-                        {formatMoney(record.dailyPay)}
+                        {formatMoney(record.daily_pay)}
                       </td>
 
                       <td className="whitespace-nowrap px-5 py-4">

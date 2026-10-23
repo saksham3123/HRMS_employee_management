@@ -5,24 +5,26 @@ export default function MonthlyReport({ employees = [] }) {
   const now = new Date();
 
   const [userId, setUserId] = useState("");
+
+  
   const [month, setMonth] = useState(String(now.getMonth() + 1));
   const [year, setYear] = useState(String(now.getFullYear()));
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    
     if (!userId) {
       setError("Please select an employee.");
       return;
     }
-
+    
     setLoading(true);
     setError("");
     setReport(null);
-
+    
     try {
       const data = await getMonthlyReport(userId, month, year);
       setReport(data.report ?? data);
@@ -59,6 +61,7 @@ export default function MonthlyReport({ employees = [] }) {
           >
             Employee
           </label>
+          {/* <p>userid = {userId}</p> */}
           <select
             id="report-employee"
             value={userId}
@@ -68,10 +71,10 @@ export default function MonthlyReport({ employees = [] }) {
           >
             <option value="">Select employee</option>
             {employees
-              .filter((employee) => employee.role === "user")
+              .filter((employee) => employee.roles?.includes("employee"))
               .map((employee) => (
-                <option key={employee._id} value={employee._id}>
-                  {employee.name} — {employee.email}
+                <option key={employee.id} value={employee.id}>
+                  {employee.name} 
                 </option>
               ))}
           </select>
@@ -122,7 +125,10 @@ export default function MonthlyReport({ employees = [] }) {
         <div className="flex items-end">
           <button
             type="submit"
-            disabled={loading || employees.filter((e) => e.role === "user").length === 0}
+            disabled={
+  loading ||
+  employees.filter((employee) => employee.roles?.includes("employee")).length === 0
+}
             className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? "Generating..." : "Generate Report"}

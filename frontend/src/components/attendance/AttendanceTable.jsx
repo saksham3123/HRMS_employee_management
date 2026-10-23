@@ -57,23 +57,23 @@ export default function AttendanceTable({ records = [], loading = false }) {
             ) : (
               records.map((record) => (
                 <tr
-                  key={record._id}
+                  key={record.id}
                   className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
                 >
                   <td className="px-4 py-4 text-slate-700">
                     {formatDate(record.date)}
                   </td>
                   <td className="px-4 py-4 text-slate-700">
-                    {formatTime(record.loginTime)}
+                    {formatTime(record.login_time ?? record.loginTime)}
                   </td>
                   <td className="px-4 py-4 text-slate-700">
-                    {formatTime(record.logoutTime)}
+                    {formatTime(record.logout_time ?? record.logoutTime) }
                   </td>
                   <td className="px-4 py-4 text-slate-700">
-                    {Number(record.workingHours ?? 0).toFixed(2)} hrs
+                    {Number(record.working_hours ?? record.workingHours ?? 0).toFixed(2)} hrs
                   </td>
                   <td className="px-4 py-4 font-medium text-slate-900">
-                    ₹{Number(record.dailyPay ?? 0).toFixed(2)}
+                    ₹{Number(record.daily_pay ?? record.dailyPay ?? 0).toFixed(2)}
                   </td>
                 </tr>
               ))

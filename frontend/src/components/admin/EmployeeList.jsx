@@ -16,11 +16,11 @@ export default function EmployeeList({
 
   const handleDelete = (employee) => {
     const confirmed = window.confirm(
-      `Are you sure you want to delete ${employee.name}'s account?`
+      `Are you sure you want to deactivate ${employee.name}'s account?`
     );
 
     if (confirmed) {
-      onDelete(employee._id);
+      onDelete(employee.id);
     }
   };
 
@@ -43,6 +43,7 @@ export default function EmployeeList({
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Role</th>
               <th className="px-4 py-3 font-medium">Joined</th>
+              <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Action</th>
             </tr>
           </thead>
@@ -63,7 +64,7 @@ export default function EmployeeList({
             ) : (
               employees.map((employee) => (
                 <tr
-                  key={employee._id}
+                  key={employee.id}
                   className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
                 >
                   <td className="px-4 py-4 font-medium text-slate-900">
@@ -76,7 +77,7 @@ export default function EmployeeList({
 
                   <td className="px-4 py-4">
                     <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                      {employee.role}
+                     {employee.roles?.join(", ") || "No role"}
                     </span>
                   </td>
 
@@ -85,21 +86,34 @@ export default function EmployeeList({
                   </td>
 
                   <td className="px-4 py-4">
-                    {employee.role === "admin" ? (
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${employee.is_active
+                        ? "bg-green-50 text-green-700"
+                        : "bg-red-50 text-red-700"
+                        }`}
+                    >
+                      {employee.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+
+                  <td className="px-4 py-4">
+                    {employee.roles?.includes("admin") ? (
                       <span className="text-xs text-slate-400">
                         Protected account
                       </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(employee)}
-                        disabled={deletingId === employee._id}
-                        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {deletingId === employee._id
-                          ? "Deleting..."
-                          : "Delete"}
-                      </button>
+                    ) : !employee.is_active ? (
+                      <span className="text-xs text-slate-400">
+                        Deactivated
+                      </span>
+                    ) :   (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(employee)}
+                      disabled={deletingId === employee.id}
+                      className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {deletingId === employee.id ? "Deactivating..." : "Deactivate"}
+                    </button>
                     )}
                   </td>
                 </tr>
