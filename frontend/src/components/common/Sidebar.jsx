@@ -15,9 +15,9 @@ const navigationByRole = {
     ],
 
 
-    user: [
-        { label: "Dashboard", path: "/user", icon: "▦" },
-        { label: "Update Profile", path: "/user/profile", icon: "♙" },
+   employee: [
+    { label: "Dashboard", path: "/user", icon: "▦" },
+    { label: "My Profile", path: "/user/profile", icon: "♙" },
     ],
 
 };

@@ -157,6 +157,7 @@ export default function AdminDashboard() {
 
     const employeeCount = employees.filter(
         (employee) =>
+            employee.is_active === true &&
             employee.roles?.some(
                 (role) => role.toLowerCase() === "employee"
             )
