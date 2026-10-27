@@ -1,0 +1,170 @@
+/*------------------------------------------------------------------
+[Template Layout 13 CSS]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.0
+Last change:    19 June, 2026
+-------------------------------------------------------------------*/
+[data-bs-theme="light"] {
+    .layout-13 .card {
+        background: rgba(var(--bs-card-bg-rgb), 1)
+    }
+
+    .layout-13.bg-image .card {
+        background: transparent !important;
+    }
+    .layout-13 {
+        background-color: var(--bs-gray-100);
+        height: 100%;
+    }
+}
+
+/* =============== grid layout css */
+.layout-13 .app-wrapper {
+    display: grid;
+    grid-template-columns: 300px 1fr 50px;
+    grid-template-rows: 70px 1fr;
+    min-height: 100vh;
+    padding: 0;
+    gap: 0;
+    grid-template-areas:
+        "header page-header page-header"
+        "aside main rightbar";
+}
+
+.layout-13 header {
+    grid-area: header;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.layout-13 aside {
+    grid-area: aside;
+    padding: 12px;
+}
+.layout-13 .rightbar {
+    grid-area: rightbar;
+}
+
+.layout-13 .page-header {
+    grid-area: page-header;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.layout-13 main {
+    grid-area: main;
+}
+
+@media (min-width: 992px) {
+    .layout-13 main {
+        overflow-y: auto;
+        height: calc(100vh - 70px);
+    }
+    .layout-13 .offcanvas-body{
+        height: calc(100vh - 95px);
+    }
+    .layout-13 aside {
+        border-right: 1px solid var(--bs-border-color);
+    }
+    .layout-13 .rightbar {
+        border-left: 1px solid var(--bs-border-color);
+    }
+}
+@media (min-width: 1200px) { 
+    
+    
+}
+
+@media (max-width: 991.98px) {
+    .layout-13 aside {
+        position: absolute;
+        left: -100%;
+        height: 100%;
+        width: 300px;
+        top: 0;
+    }
+
+    .layout-13 .app-wrapper {
+        grid-template-columns: 100%;
+        grid-template-rows:  auto auto auto 1fr;
+        gap: 0;
+        grid-template-areas:
+            "header"
+            "rightbar"
+            "page-header"
+            "main";
+    }
+
+    .layout-13 .rightbar {
+        background: var(--bs-border-color);
+    }
+
+    .scrolled {
+        background-color: var(--bs-body-bg);
+        position: -webkit-sticky;
+        position: sticky;
+        top: 0;
+        z-index: 1020;
+    }
+}
+
+.chevron {
+    transition: transform 0.15s ease-in-out;
+}
+
+.rightbar .avatar {
+    transition: transform 0.3s ease;
+    display: flex;
+    filter: grayscale(100%);
+}
+
+.rightbar a:hover .avatar {
+    transform: scale(1.08);
+    border: 2px solid var(--bs-primary) !important;
+    filter: grayscale(0);
+}
+
+
+/* Base Nav Link Styling */
+.sidebar-list .nav-link {
+    color: inherit;
+    border-radius: 12px;
+    padding: 10px 15px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.sidebar-list .nav-link:hover, 
+.sidebar-list .nav-link.active {
+    background: rgba(var(--bs-primary-rgb),.1);
+    color: var(--bs-primary);
+}
+
+/* Sub-menu tree structure */
+.sub-menu {
+    padding-left: 2rem;
+    position: relative;
+}
+
+/* Vertical line for nested items */
+.tree-line::before {
+    content: "";
+    position: absolute;
+    left: 1.2rem;
+    top: 0;
+    bottom: 20px;
+    width: 1px;
+    background-color: var(--bs-border-color);
+}
+
+.sub-menu .nav-link {
+    font-size: 0.9rem;
+    padding: 8px 15px;
+    border-radius: 8px;
+}
+
+.sidebar-list .nav-link[aria-expanded="true"] .chevron {
+    transform: rotate(90deg);
+}

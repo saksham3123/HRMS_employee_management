@@ -4,6 +4,8 @@ export default function EmployeeList({
   onDelete,
   deletingId = null,
 }) {
+  const canDelete = typeof onDelete === "function";
+
   const formatDate = (date) => {
     if (!date) return "—";
 
@@ -44,20 +46,22 @@ export default function EmployeeList({
               <th className="px-4 py-3 font-medium">Role</th>
               <th className="px-4 py-3 font-medium">Joined</th>
               <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Action</th>
+              {canDelete && (
+                <th className="px-4 py-3 font-medium">Action</th>
+              )}
             </tr>
           </thead>
 
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={canDelete ? 6 : 5} className="px-4 py-10 text-center text-slate-500">
                   Loading employees...
                 </td>
               </tr>
             ) : employees.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={canDelete ? 6 : 5} className="px-4 py-10 text-center text-slate-500">
                   No employees found.
                 </td>
               </tr>
@@ -96,26 +100,30 @@ export default function EmployeeList({
                     </span>
                   </td>
 
-                  <td className="px-4 py-4">
-                    {employee.roles?.includes("admin") ? (
-                      <span className="text-xs text-slate-400">
-                        Protected account
-                      </span>
-                    ) : !employee.is_active ? (
-                      <span className="text-xs text-slate-400">
-                        Deactivated
-                      </span>
-                    ) :   (
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(employee)}
-                      disabled={deletingId === employee.id}
-                      className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {deletingId === employee.id ? "Deactivating..." : "Deactivate"}
-                    </button>
-                    )}
-                  </td>
+                  {canDelete && (
+                    <td className="px-4 py-4">
+                      {employee.roles?.includes("admin") ? (
+                        <span className="text-xs text-slate-400">
+                          Protected account
+                        </span>
+                      ) : !employee.is_active ? (
+                        <span className="text-xs text-slate-400">
+                          Deactivated
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(employee)}
+                          disabled={deletingId === employee.id}
+                          className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {deletingId === employee.id
+                            ? "Deactivating..."
+                            : "Deactivate"}
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))
             )}

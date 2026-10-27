@@ -87,6 +87,46 @@ CREATE TABLE IF NOT EXISTS  employees (
 
 );
 
+CREATE TABLE IF NOT EXISTS leave_types (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO leave_types (name)
+VALUES
+    ('Annual Leave'),
+    ('Sick Leave'),
+    ('Personal Leave')
+ON CONFLICT (name) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS leave_requests (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    leave_type_id INTEGER NOT NULL REFERENCES leave_types(id) ON DELETE RESTRICT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    reason TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    reviewed_at TIMESTAMPTZ,
+    review_comment TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (end_date >= start_date)
+);
+
+ALTER TABLE leave_requests
+DROP CONSTRAINT IF EXISTS leave_requests_status_check;
+
+ALTER TABLE leave_requests
+ADD CONSTRAINT leave_requests_status_check
+CHECK (status IN ('pending', 'approved', 'rejected', 'cancelled'));
+
+CREATE INDEX IF NOT EXISTS leave_requests_employee_created_idx
+ON leave_requests (employee_id, created_at DESC);
+
 
 --9. Employee reporting relationships
 
@@ -196,7 +236,6 @@ SELECT r.id , p.id
 FROM roles r
 JOIN permissions  p ON p.permission_key IN (
     'users.view',
-    'users.create',
     'users.update',
     'employees.view',
     'employees.create',
@@ -205,11 +244,19 @@ JOIN permissions  p ON p.permission_key IN (
     'designations.manage',
     'attendance.view.all',
     'leave.manage',
+    'leave.apply',
     'payroll.view.self',
     'payroll.view.all',
     'payroll.manage'
 )
 WHERE r.name = 'hr' ON CONFLICT DO NOTHING;
+
+DELETE FROM role_permissions rp
+USING roles r, permissions p
+WHERE rp.role_id = r.id
+  AND rp.permission_id = p.id
+  AND r.name = 'hr'
+  AND p.permission_key = 'users.create';
 
 --MANAGER PERMISSIONS
 INSERT INTO role_permissions (role_id, permission_id)
@@ -218,7 +265,8 @@ FROM roles r
 JOIN permissions p ON p.permission_key IN (
     'employees.view',
     'attendance.view.team',
-    'leave.approve.team'
+    'leave.approve.team',
+    'leave.apply'
 )
 WHERE r.name = 'manager'
 ON CONFLICT DO NOTHING;
@@ -253,7 +301,4 @@ ON user_roles (role_id);
 
 
 CREATE INDEX IF NOT EXISTS attendance_data_idx ON attendance(date);
-
-
-
 

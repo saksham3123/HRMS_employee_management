@@ -21,10 +21,9 @@ export default function LoginForm() {
 
             const loggedInUser = await login(email, password);
 
-            navigate(
-                loggedInUser.role === "admin" ? "/admin" : "/user",
-                { replace: true }
-            );
+            
+navigate("/dashboard", { replace: true });
+
 
         } catch (err) {
             setError(err.message || "Login failed. Please try again.");

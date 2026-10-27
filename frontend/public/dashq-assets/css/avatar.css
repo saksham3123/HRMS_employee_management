@@ -1,0 +1,108 @@
+/*------------------------------------------------------------------
+[Avatar]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.1
+Last change:    05 July, 2026
+-------------------------------------------------------------------*/
+.avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background-color: #e5e7eb;
+}
+
+.avatar-xs {
+    width: 20px;
+    height: 20px;
+}
+
+.avatar-sm {
+    width: 26px;
+    height: 26px;
+}
+
+.avatar-md {
+    width: 46px;
+    height: 46px;
+}
+
+.avatar-lg {
+    width: 60px;
+    height: 60px;
+}
+
+.avatar-xl {
+    width: 80px;
+    height: 80px;
+}
+
+.avatar-xxl {
+    width: 120px;
+    height: 120px;
+}
+
+.avatar-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--bs-white);
+}
+
+.avatar-group .avatar {
+    margin-left: -8px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.avatar-group .avatar:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.avatar-upload-circle {
+    width: 112px;
+    height: 112px;
+    border-radius: 50%;
+    background: rgba(var(--bs-primary-rgb), .2);
+    border: 2px dashed var(--bs-border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    i {
+        font-size: 34px;
+        color: var(--bs-secondary);
+    }
+    &.has-image i {
+        display: none;
+    }
+}
+
+.avatar-edit-btn {
+    position: absolute;
+    bottom: 2px;
+    right: calc(50% - 56px + 4px);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bs-primary);
+    border: 2px solid var(--bs-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.avatar-edit-btn i {
+    color: var(--bs-white);
+    font-size: 14px;
+}

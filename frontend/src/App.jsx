@@ -8,6 +8,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import HRDashboard from "./pages/HRDashboard";
 import ManagerDashboard from "./pages/ManagerDashboard";
+import Dashboard from "./pages/Dashboard";
+
 
 
 function HomeRedirect() {
@@ -19,11 +21,11 @@ function HomeRedirect() {
   }
 
   const dashboardByRole = {
-    admin: "/admin",
-    hr: "/hr",
-    manager: "/manager",
-    employee: "/user",
-  };
+  admin: "/dashboard",
+  hr: "/dashboard",
+  manager: "/dashboard",
+  employee: "/dashboard",
+};
 
   return (
     <Navigate
@@ -50,6 +52,14 @@ export default function App() {
           <Route path="/manager/*" element={<ManagerDashboard />} />
         </Route>
 
+        <Route
+          element={
+            <ProtectedRoute />
+          }
+        >
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Route>
+
 
         {/* Employee routes */}
         <Route element={<ProtectedRoute allowedRole="employee" />}>
@@ -61,6 +71,8 @@ export default function App() {
         <Route element={<ProtectedRoute allowedRole="admin" />}>
           <Route path="/admin/*" element={<AdminDashboard />} />
         </Route>
+
+        
 
         <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<HomeRedirect />} />

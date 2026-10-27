@@ -1,0 +1,42 @@
+/*------------------------------------------------------------------
+[App Documentation Page CSS]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.0
+Last change:    19 June, 2026
+-------------------------------------------------------------------*/
+.table-sm th,
+.table-sm td {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.85rem;
+}
+
+.callout {
+    border-radius: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    font-size: 0.88rem;
+    color: #374151;
+}
+
+.badge-pill-outline {
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    padding: 0.08rem 0.55rem;
+    font-size: 0.75rem;
+    color: #4b5563;
+}
+
+.docs-sidebar .nav-link {
+    display: inline-flex;
+    margin-bottom: 2px;
+}
+
+.docs-sidebar .nav-link.active,
+.docs-sidebar .nav-link:hover {
+    background-color: var(--bs-primary);
+    color: var(--bs-white);
+    padding: 0 6px;
+}

@@ -1,0 +1,39 @@
+/*------------------------------------------------------------------
+[Rigtbar Quick Chat Drawer]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.0
+Last change:    19 June, 2026
+-------------------------------------------------------------------*/
+.chat-title {
+    font-size: .95rem;
+    font-weight: 600;
+    margin-bottom: .1rem;
+}
+
+.chat-body {
+    height: calc(100vh - 232px);
+}
+
+.msg-bubble {
+    border-radius: 1.1rem;
+    padding: .55rem .85rem;
+    font-size: .85rem;
+    line-height: 1.4;
+    max-width: 75%;
+}
+
+.msg-in {
+    border-bottom-left-radius: .35rem;
+}
+
+.msg-out {
+    background-color: var(--bs-primary);
+    color: var(--bs-white);
+    border-bottom-right-radius: .35rem;
+}
+
+.msg-meta {
+    font-size: .72rem;
+}

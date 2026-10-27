@@ -1,0 +1,73 @@
+/*------------------------------------------------------------------
+[App menu and mega dropdown menu css]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.0
+Last change:    19 June, 2026
+-------------------------------------------------------------------*/
+.app-menu .app-card {
+    letter-spacing: 0.05em;
+    overflow: hidden;
+    display: flex;
+    width: 80px;
+    height: 80px;
+    align-items: center;
+    justify-content: center;
+}
+
+.app-menu a:hover .app-card {
+    box-shadow: 0 2px 0 1px var(--bs-primary);
+    color: var(--bs-primary) !important;
+    transition: var(--transition-3s);
+}
+
+.app-menu a:hover .app-card::before {
+    content: '\F14E';
+    position: absolute;
+    left: 8px;
+    top: 4px;
+    font-family: bootstrap-icons !important;
+    font-size: 14px;
+}
+
+/* =============== Mega menu small  */
+.menu-mega-sm .dropdown-menu {
+    min-width: calc(100% - 6px);
+    left: 3px;
+    border-radius: 20px;
+}
+
+.menu-mega-sm .sidebar-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-black-50);
+    font-weight: 700;
+    margin-bottom: 10px;
+    margin-top: 10px;
+}
+
+.menu-mega-sm .sidebar-link {
+    display: block;
+    padding: 5px 0;
+    color: inherit;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.menu-mega-sm .sidebar-link:hover {
+    color: var(--bs-primary);
+}
+
+.job-card {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.job-card:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.05);
+    transform: translateY(-2px);
+}

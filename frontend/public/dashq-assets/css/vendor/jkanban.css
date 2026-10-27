@@ -1,0 +1,82 @@
+/*------------------------------------------------------------------
+[JKanban Board custom CSS]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.0
+Last change:    19 June, 2026
+-------------------------------------------------------------------*/
+.jkanban_color [data-order="1"] .kanban-item {
+    background: rgba(var(--bs-primary-rgb), .05);
+    border: 1px solid rgba(var(--bs-primary-rgb), .1);
+}
+
+.jkanban_color [data-order="2"] .kanban-item {
+    background: rgba(var(--bs-warning-rgb), .05);
+    border: 1px solid rgba(var(--bs-warning-rgb), .1);
+}
+
+.jkanban_color [data-order="3"] .kanban-item {
+    background: rgba(var(--bs-success-rgb), .05);
+    border: 1px solid rgba(var(--bs-success-rgb), .1);
+}
+
+.kanban-board {
+    background: transparent;
+    width: 100%;
+    padding-inline: .5rem;
+}
+
+.kanban-board header {
+    padding: 0;
+    margin-bottom: 1rem;
+}
+.kanban-board-header{
+    background: transparent !important;
+}
+
+.kanban-board .kanban-drag {
+    padding: 0;
+    overflow: visible;
+    height: auto !important;
+    border-radius: 0 !important;
+    background: transparent;
+}
+
+.kanban-item {
+    margin-bottom: 8px;
+    background: rgba(var(--bs-dark-rgb), .03);
+    border-radius: 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--app-border);
+}
+
+.kanban-item:hover {
+    background: rgba(var(--bs-primary-rgb), .1);
+}
+
+.jkanban_advanced .kanban-item {
+    border: 1px dashed var(--bs-border-color);
+}
+
+.layout-main.bg-image .jkanban-advanced main {
+    background-color: transparent;
+}
+
+.layout-main.bg-image.glass-effect .kanban-item {
+    background: rgba(var(--bs-dark-rgb), .05);
+    border-color: rgba(var(--bs-card-bg-rgb), 1);
+}
+
+@media (min-width: 768px) {
+    .kanban-container {
+        margin: 0 -.5rem;
+        display: flex;
+        align-items: start;
+        width: 100% !important;
+    }
+
+    .kanban-board {
+        width: 100% !important;
+    }
+}

@@ -1,0 +1,42 @@
+/*------------------------------------------------------------------
+[Dropify custom CSS]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.0
+Last change:    19 June, 2026
+-------------------------------------------------------------------*/
+.dropify-wrapper,
+.dropify-wrapper .dropify-clear {
+    font-family: inherit;
+}
+
+.dropify-wrapper {
+    background: rgba(var(--bs-primary-rgb), .03);
+    border-color: rgba(var(--bs-primary-rgb), .35);
+    border-radius: 8px;
+    border-width: 1px;
+    border-style: dashed;
+}
+
+.dropify-wrapper:hover {
+    background-image: linear-gradient(-45deg, rgba(var(--bs-primary-rgb), .1) 25%, transparent 25%, transparent 50%, rgba(var(--bs-primary-rgb), .1) 50%, rgba(var(--bs-primary-rgb), .1) 75%, transparent 75%, transparent);
+}
+
+.dropify-wrapper:hover .dropify-message span.file-icon {
+    opacity: 1;
+}
+
+.dropify-wrapper .dropify-message span.file-icon {
+    color: var(--bs-primary) !important;
+    opacity: .3;
+}
+
+.dropify-wrapper .dropify-message span.file-icon p {
+    font-size: 18px;
+}
+
+.file-icon::before{
+    content: '\F297' !important;
+    font-family: bootstrap-icons !important;
+}

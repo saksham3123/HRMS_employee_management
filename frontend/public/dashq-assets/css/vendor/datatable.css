@@ -1,0 +1,197 @@
+/*------------------------------------------------------------------
+[Datatable custom CSS]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.2
+Last change:    17 July, 2026
+-------------------------------------------------------------------*/
+table.dataTable.no-footer {
+    border-bottom: 1px solid var(--app-border);
+}
+
+.d-footer {
+    margin-top: 16px;
+}
+
+.dataTables_wrapper {
+
+    .dataTables_length > label {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    .dataTables_length select {
+        display: block;
+        width: 100%;
+        padding: .375rem .75rem;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: var(--bs-body-color);
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-color: var(--bs-body-bg);
+        background-image: var(--bs-form-select-bg-img), var(--bs-form-select-bg-icon, none);
+        background-repeat: no-repeat;
+        background-position: right .75rem center;
+        background-size: 16px 12px;
+        border: var(--bs-border-width) solid var(--app-border);
+        border-radius: var(--bs-border-radius);
+        transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+    }
+    
+    .dataTables_paginate {
+        border: 1px solid var(--app-border);
+        padding: 4px;
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        border-radius: 40px;
+        justify-content: center;
+
+        >ul {
+            margin-bottom: 0;
+        }
+        
+        >span {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+            .paginate_button {
+                border: 0 !important;
+                margin: 0 !important;
+                border-radius: 40px !important;
+                min-width: 2rem;
+                min-height: 2rem;
+                padding: 0 !important;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+        
+        .paginate_button {
+            border: 0 !important;
+            padding: 4px 14px !important;
+            border-radius: 40px !important;
+            margin: 0 !important;
+
+            &:hover,
+            &.active:hover {
+                background: rgba(var(--bs-primary-rgb), .6);
+            }
+            
+            &.current {
+                border: 0 !important;
+                background: var(--bs-primary);
+                color: var(--bs-white) !important;
+            }
+        }
+    }
+    
+    .dataTables_length {
+        color: var(--bs-body-color);
+        /* width: 100%; */
+    }
+}
+
+
+table.dataTable thead th,
+table.dataTable thead td {
+    border: 0;
+}
+
+table.dataTable.dtr-inline.collapsed tbody td:first-child:before,
+table.dataTable.dtr-inline.collapsed tbody th:first-child:before {
+    background-color: var(--bs-primary);
+    transform: translateY(-50%);
+    top: 50%;
+    left: -8px;
+}
+
+.dataTables_filter {
+    margin: 0 !important;
+    width: 100%;
+    input {
+        border: var(--bs-border-width) solid var(--app-border);
+        border-radius: var(--bs-border-radius);
+        background-color: var(--bs-body-bg);
+        background-clip: padding-box;
+        color: var(--bs-body-color);
+        padding: .375rem .75rem;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.5;
+    }
+    > label{
+        width: 100%;
+        > input[type="search"]{
+            width: 100%;
+            margin:  0 !important;
+        }
+    }
+}
+
+table.dataTable.display tbody tr.odd>.sorting_1,
+table.dataTable.order-column.stripe tbody tr.odd>.sorting_1,
+table.dataTable.display tbody tr.even>.sorting_1,
+table.dataTable.order-column.stripe tbody tr.even>.sorting_1 {
+    background-color: var(--app-border);
+}
+
+table.dataTable.row-border tbody th,
+table.dataTable.row-border tbody td,
+table.dataTable.display tbody th,
+table.dataTable.display tbody td {
+    border-color: var(--app-border);
+}
+
+table.dataTable tr.child ul li {
+    border-color: var(--app-border);
+}
+
+table.dataTable thead th,
+table.dataTable thead td {
+    background: var(--app-border);
+}
+
+table.dataTable tr,
+table.dataTable tr td {
+    background-color: transparent !important;
+}
+
+table.dataTable thead .sorting_desc {
+    background-image: url(../../images/sort_desc.svg);
+}
+
+table.dataTable thead .sorting_asc {
+    background-image: url(../../images/sort_asc.svg);
+}
+
+table.dataTable thead .sorting {
+    background-image: url(../../images/sort_both.svg);
+}
+
+table.dataTable thead th {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: var(--bs-primary);
+}
+
+.card .dataTables_wrapper .dataTables_paginate {
+    margin-right: 16px;
+}
+
+.card .dataTables_wrapper .dataTables_info {
+    margin-left: 16px;
+}
+
+
+@media (max-width: 767.98px) { 
+    .card .dataTables_wrapper .dataTables_paginate {
+        justify-content: center;
+    }
+ }

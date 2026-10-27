@@ -1,5 +1,26 @@
 import pool from "../config/postgres.js"
 
+export const getLeaveTypes = async (_req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT id, name
+             FROM leave_types
+             WHERE is_active = TRUE
+             ORDER BY name`
+        );
+
+        return res.status(200).json({
+            leaveTypes: result.rows,
+        });
+    } catch (error) {
+        console.error("Get leave types error:", error);
+
+        return res.status(500).json({
+            message: "Failed to retrieve leave types",
+        });
+    }
+};
+
 // submit a leave request
 
 export const createLeaveRequest = async (req, res) => {
@@ -218,7 +239,7 @@ export const getAllLeaveRequests = async (req , res) => {
 
 export const reviewLeaveRequest = async (req, res) => {
     const { id } = req.params;
-    const { status , reviewComment = ""} = req.body;
+    const { status, reviewComment = "" } = req.body;
 
       if (!Number.isInteger(Number(id)) || Number(id) <= 0) {
         return res.status(400).json({
@@ -227,9 +248,9 @@ export const reviewLeaveRequest = async (req, res) => {
     }
 
 
-    if (!["approved", "rejected"].includes(status)) {
+    if (!["approved", "rejected", "cancelled"].includes(status)) {
         return res.status(400).json({
-            message: "Status must be approved or rejected",
+            message: "Status must be approved, rejected, or cancelled",
         });
     }
 
@@ -253,7 +274,10 @@ export const reviewLeaveRequest = async (req, res) => {
                  review_comment = $3,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = $4
-               AND status = 'pending'
+               AND (
+                    status = 'pending'
+                    OR ($1 = 'cancelled' AND status = 'approved')
+               )
              RETURNING *`,
             [
                 status,

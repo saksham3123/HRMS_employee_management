@@ -1,0 +1,178 @@
+/*------------------------------------------------------------------
+[Template Layout 10 CSS]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.0
+Last change:    19 June, 2026
+-------------------------------------------------------------------*/
+[data-bs-theme="light"] .layout-10 {
+    background-color: var(--bs-gray-100);
+}
+
+/*=============== Main layout css */
+.layout-10 {
+    background-color: var(--bs-body-bg);
+    height: 100%;
+}
+
+.layout-10.bg-image header,
+.layout-10.bg-image .page-header {
+    background: rgba(var(--bs-card-bg-rgb), .3);
+}
+
+/* =============== grid layout css */
+.layout-10 .app-wrapper {
+    display: grid;
+    grid-template-columns: auto;
+    grid-template-rows: 60px 160px 1fr auto;
+    min-height: 100vh;
+    padding: 0;
+    gap: 0;
+    grid-template-areas:
+        "header"
+        "page-header"
+        "main"
+        "footer";
+}
+
+.layout-10 header {
+    grid-area: header;
+    background-color: rgba(var(--bs-card-bg-rgb), 1);
+}
+
+.layout-10 .page-header {
+    grid-area: page-header;
+    background-color: rgba(var(--bs-card-bg-rgb), 1);
+}
+
+.layout-10 main {
+    grid-area: main;
+}
+
+.layout-10 footer {
+    grid-area: footer;
+}
+
+.icon-button {
+    height: 34px;
+    width: 34px;
+    padding: 0;
+}
+
+.icon-button:hover {
+    background: rgba(var(--bs-primary-rgb), .2);
+    color: var(--bs-primary);
+}
+
+/* =============== mega menu */
+.dropdown-mega {
+    position: static;
+}
+
+.dropdown-mega a {
+    text-decoration: none;
+    font-size: 15px;
+    position: relative;
+}
+
+.dropdown-mega li a:hover::after {
+    background: rgba(var(--bs-primary-rgb), .1);
+    position: absolute;
+    left: -14px;
+    height: 28px;
+    width: 100%;
+    content: '';
+    top: -3px;
+    border-radius: 28px;
+}
+
+.dropdown-menu-mega {
+    margin-top: .75rem;
+}
+
+/* directions column */
+.direction-item {
+    padding: .65rem .75rem;
+    transition: background-color .15s ease;
+}
+
+.direction-item .avatar {
+    background: rgba(var(--bs-card-bg-rgb), .9) !important;
+}
+
+.direction-item.active,
+.direction-item:hover {
+    background-color: var(--bs-card-bg);
+    box-shadow: var(--bs-box-shadow-sm);
+}
+
+.dropdown .dropdown-toggle::after {
+    transition: transform 0.15s ease-in-out;
+}
+
+.dropdown.show .dropdown-toggle::after,
+.dropdown:hover .dropdown-toggle::after {
+    transform: rotate(180deg);
+}
+
+/* right promo card */
+.promo-card {
+    background: rgba(var(--bs-card-bg-rgb), .7)
+}
+
+.promo-thumb {
+    background: linear-gradient(135deg, #6366f1, #ec4899, #f97316);
+    height: 120px;
+}
+
+@media (max-width: 991.98px) {
+    .dropdown-menu-mega {
+        width: 100%;
+        box-shadow: none;
+        border: 0;
+        margin-top: 0;
+    }
+}
+
+@media (min-width: 992px) {
+    .dropdown-menu-mega {
+        width: 820px;
+        /* adjust width if you like */
+    }
+}
+
+@media (min-width: 1200px) {
+    .dropdown-menu-mega {
+        width: 960px;
+        /* adjust width if you like */
+    }
+}
+
+.page-header .nav-link {
+    background-color: transparent !important;
+    opacity: .8;
+}
+
+.page-header .nav-link.active {
+    opacity: 1;
+    color: var(--bs-primary);
+    border-bottom: 2px solid var(--bs-primary);
+}
+
+.page-header .action-bar {
+    bottom: -17px;
+}
+
+.chevron {
+    transition: transform 0.15s ease-in-out;
+}
+
+.collapse-toggle[aria-expanded="true"] .chevron {
+    transform: rotate(90deg);
+}
+
+.glass-effect .page-breadcrumb {
+    background: rgba(var(--bs-card-bg-rgb), .3);
+    backdrop-filter: blur(20px) saturate(100%);
+}

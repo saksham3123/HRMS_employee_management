@@ -1,0 +1,101 @@
+/*------------------------------------------------------------------
+[Template Inner Body sidebar css]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.0
+Last change:    19 June, 2026
+-------------------------------------------------------------------*/
+.body-layout .body-sidebar {
+    width: 340px;
+}
+
+.body-layout .body-content {
+    width: calc(100% - 340px);
+}
+
+.body-layout.sm .body-sidebar {
+    width: 200px;
+}
+
+.body-layout.sm .body-content {
+    width: calc(100% - 200px);
+}
+
+.body-layout.md .body-sidebar {
+    width: 260px;
+}
+
+.body-layout.md .body-content {
+    width: calc(100% - 260px);
+}
+
+.body-layout.lg .body-sidebar {
+    width: 420px;
+}
+
+.body-layout.lg .body-content {
+    width: calc(100% - 420px);
+}
+
+@media (max-width: 991.98px) {
+
+    .body-layout .body-sidebar,
+    .body-layout .body-content {
+        width: 100% !important;
+    }
+}
+
+@media (min-width: 992px) {
+    .body-navbar-collapse.body-layout .body-content {
+        width: 100%;
+    }
+
+    .body-navbar-collapse .btn-navbar-collapse i::before {
+        content: "\F133";
+    }
+
+    .rightside.btn-navbar-collapse .bi::before{
+        content: '\F133';
+    }
+    .body-navbar-collapse .rightside.btn-navbar-collapse .bi::before{
+        content: '\f129';
+    }
+
+    .body-navbar-collapse .app-body .navbar {
+        display: none;
+    }
+
+    .body-layout .app-body .body-content,
+    .body-layout .app-body .navbar {
+        align-items: start;
+        height: calc(100vh - 94px);
+        overflow-y: auto;
+    }
+}
+
+.menu-list li .nav-link{
+    padding-right: 1.2rem;
+    position: relative;
+    text-decoration: none;
+}
+.menu-list li .nav-link::after{
+    transition: 0.2s all ease-in-out;
+    font-family: 'bootstrap-icons';
+    content: "\F135";
+    position: absolute;
+    right: 8px;
+    opacity: 0;
+}
+
+.menu-list li .nav-link:hover,
+.menu-list li .nav-link.active {
+    color: var(--bs-primary);
+}
+.menu-list li .nav-link:hover::after {
+    opacity: 1;
+    right: -3px;
+}
+.menu-list li .nav-link:hover i {
+    opacity: 1 !important;
+}

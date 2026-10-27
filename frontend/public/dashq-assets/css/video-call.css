@@ -1,0 +1,64 @@
+/*------------------------------------------------------------------
+[App Video Call Page CSS]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.0
+Last change:    19 June, 2026
+-------------------------------------------------------------------*/
+.video-call .video-container {
+    position: relative;
+    height: 72.2vh;
+    background: url('../images/video-call-img.png') center/cover;
+    overflow: hidden;
+    box-shadow: var(--bs-box-shadow-sm);
+}
+
+/* Glass Effects */
+.glass {
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: var(--bs-white);
+}
+
+/* Controls */
+.video-call .control-btn {
+    width: 48px; height: 48px; border-radius: 50%;
+    border: none; display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; transition: 0.3s;
+}
+.video-call .btn-hangup { background: var(--bs-danger); color: var(--bs-white); width: 85px; border-radius: 30px; }
+
+/* Transcription */
+.video-call .bi-soundwave { font-size: 2rem; color: var(--bs-primary); }
+
+/* Thumb (DOT) - Chrome, Safari, Edge */
+.video-call .video-container input[type="range"]::-webkit-slider-thumb {
+    margin-left: -5px;
+}
+
+.video-call.app-body-fullscreen .video-container{
+    height: 83vh;
+}
+.video-call.app-body-fullscreen .chat-body{
+    height: calc(100vh - 142px);
+}
+.video-call.app-body-fullscreen .app-body .body-content,
+.video-call.app-body-fullscreen .app-body .navbar{
+    height: 100%;
+}
+.video-call.app-body-fullscreen .offcanvas-body{
+    height: 100%;
+}
+
+@media (max-width: 1199.98px) { 
+    .video-call .offcanvas-body{
+        padding: 0 !important;
+    }
+    .video-call .body-sidebar{
+        border: 0 !important;
+        width: 100%;
+    }
+}

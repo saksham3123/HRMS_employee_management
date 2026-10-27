@@ -1,0 +1,203 @@
+/*------------------------------------------------------------------
+[Theme color variable]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.1
+Last change:    25 July, 2026
+-------------------------------------------------------------------*/
+:root {
+    --bs-card-bg: #ffffff;
+    --bs-card-bg-rgb: 255, 255, 255;
+    --bs-border-color: #eeeeee;
+    --bs-border-color-translucent: rgba(0, 0, 0, 0.1);
+    --bs-link-color-rgb: var(--bs-primary-rgb);
+    --bs-success: #22c55e;
+    --bs-success-rgb: 34, 197, 94;
+    --text-black-50: rgba(0, 0, 0, 0.5);
+    --app-border: #ffffff;
+
+    /* typography */
+    --app-font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+    --base-font-size: 16px;
+    --font-scale: 1;
+    /* small=0.9, medium=1, large=1.1 */
+
+    --transition-3s: all ease-in-out 0.3s;
+    --bs-border-radius: 10px;
+}
+
+[data-bs-theme=dark] {
+    --bs-body-bg: #000000;
+    --bs-card-bg: #000000;
+    --bs-card-bg-rgb: 0, 0, 0;
+    --bs-border-color: #ffffff1a;
+    --bs-border-color-translucent: rgba(256, 256, 256, 0.15);
+    --app-border: #1f1f1f;
+
+    /* --bs-card-bg: #1F1F1F; */
+    --bs-card-bg-rgb: 31, 31, 31;
+    --text-black-50: rgba(255, 255, 255, 0.5);
+
+    .bg-light {
+        background: #000 !important;
+    }
+}
+
+/* Theme presets - only touch Bootstrap primary */
+[data-theme="theme-purple"] {
+    --bs-primary: #7c3aed;
+    --bs-primary-dark: #4e17a6;
+    --bs-primary-rgb: 124, 58, 237;
+    --bs-app-body: #f6f6f6;
+}
+
+[data-theme="theme-indigo"] {
+    --bs-primary: #573CFB;
+    --bs-primary-dark: #2c25b4;
+    --bs-primary-rgb: 79, 70, 229;
+    --bs-app-body: #f0f2f5;
+}
+
+[data-theme="theme-sky"] {
+    --bs-primary: #1966d2;
+    --bs-primary-dark: #17379d;
+    --bs-primary-rgb: 37, 99, 235;
+    --bs-app-body: #f4f5f5;
+}
+
+[data-theme="theme-emerald"] {
+    --bs-primary: #4dcf7d;
+    --bs-primary-dark: #149443;
+    --bs-primary-rgb: 34, 197, 94;
+    --bs-app-body: #f3f3f3;
+}
+
+[data-theme="theme-rose"] {
+    --bs-primary: #f43f5e;
+    --bs-primary-dark: #b40e37;
+    --bs-primary-rgb: 244, 63, 94;
+    --bs-app-body: #f3f3f3;
+}
+
+[data-theme="theme-orange"] {
+    --bs-primary: #fa8738;
+    --bs-primary-dark: #de5c00;
+    --bs-primary-rgb: 249, 115, 22;
+    --bs-app-body: #f3f1ed;
+}
+
+[data-theme="theme-slate"] {
+    --bs-primary: #475569;
+    --bs-primary-dark: #1e293b;
+    --bs-primary-rgb: 71, 85, 105;
+    --bs-app-body: #f0f3f6;
+}
+
+[data-theme="theme-mocha"] {
+    --bs-primary: #7b4a2e;
+    --bs-primary-dark: #532e1a;
+    --bs-primary-rgb: 123, 74, 46;
+    --bs-app-body: #f4efe9;
+}
+
+[data-theme="theme-mustard"] {
+    --bs-primary: #ca8a04;
+    --bs-primary-dark: #77440b;
+    --bs-primary-rgb: 202, 138, 4;
+    --bs-app-body: #eeeeee;
+}
+
+.bg-image {
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+[data-bs-theme="light"][data-theme="theme-purple"] {
+    body.bg-image {
+        background-image: url(../images/bg-purple.png);
+    }
+}
+
+[data-bs-theme="light"][data-theme="theme-indigo"] {
+    body.bg-image {
+        background-image: url(../images/bg-indigo.png);
+    }
+}
+
+[data-bs-theme="light"][data-theme="theme-sky"] {
+    body.bg-image {
+        background-image: url(../images/bg-sky.png);
+    }
+}
+
+[data-bs-theme="light"][data-theme="theme-emerald"] {
+    body.bg-image {
+        background-image: url(../images/bg-emerald.png);
+    }
+}
+
+[data-bs-theme="light"][data-theme="theme-rose"] {
+    body.bg-image {
+        background-image: url(../images/bg-rose.png);
+    }
+}
+
+[data-bs-theme="light"][data-theme="theme-orange"] {
+    body.bg-image {
+        background-image: url(../images/bg-orange.png);
+    }
+}
+
+[data-bs-theme="light"][data-theme="theme-slate"] {
+    body.bg-image {
+        background-image: url(../images/bg-slate.png);
+    }
+}
+
+[data-bs-theme="light"][data-theme="theme-mustard"] {
+    body.bg-image {
+        background-image: url(../images/bg-mustard.png);
+    }
+}
+
+/* Retro Style Border */
+[data-bs-theme="light"] {
+    .retro-border {
+        --bs-border-color: #000000;
+    }
+
+    .retro-border .border,
+    .retro-border .border-secondary-subtle,
+    .retro-border .card,
+    .retro-border .form-check-input,
+    .retro-border .border-top,
+    .retro-border .border-bottom,
+    .retro-border .border-start,
+    .retro-border .border-end,
+    .retro-border {
+        border-color: #000000 !important;
+    }
+
+    .retro-border .vr {
+        opacity: 1 !important;
+        background-color: #000000;
+    }
+
+    .retro-border aside svg {
+        --bs-gray-400: #000000;
+    }
+
+    .retro-border .card .card-title {
+        border: 1px solid #000000;
+        border-bottom: 0;
+    }
+
+    .retro-border .kanban-item {
+        border-color: #000000 !important;
+        border-bottom-width: 3px;
+    }
+}

@@ -1,0 +1,23 @@
+/*------------------------------------------------------------------
+[Master Stylesheet]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.0
+Last change:    19 June, 2026
+-------------------------------------------------------------------*/
+@import url(https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap);
+@import url(https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap);
+@import url(animation.css);
+@import url(theme.css);
+@import url(bootstrap.css);
+@import url(base.css);
+@import url(inner-left-menu-layout.css);
+@import url(menu-style.css);
+@import url(cards.css);
+@import url(avatar.css);
+@import url(chat-drawer.css);
+@import url(notifications-drawer.css);
+@import url(small-card-grid.css);
+@import url(accordion-tab.css);
+@import url(widgets.css);

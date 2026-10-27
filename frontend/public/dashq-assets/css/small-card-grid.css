@@ -1,0 +1,45 @@
+/*------------------------------------------------------------------
+[Small Grid Cards]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.0
+Last change:    19 June, 2026
+-------------------------------------------------------------------*/
+.small-card-grid {
+    display: grid;
+    grid-template-columns: repeat(1, 1fr);
+    grid-template-rows: repeat(1, 1fr);
+    gap: 16px;
+}
+
+@media (min-width: 768px) {
+    .small-card-grid {
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+    }
+
+    .small-card-grid .div2 {
+        grid-row: span 2 / span 2;
+        grid-column-start: 1;
+        grid-row-start: 2;
+    }
+
+    .small-card-grid .div3 {
+        grid-row: span 2 / span 2;
+        grid-column-start: 2;
+        grid-row-start: 1;
+    }
+
+    .small-card-grid .div4 {
+        grid-row: span 2 / span 2;
+        grid-column-start: 3;
+        grid-row-start: 1;
+    }
+
+    .small-card-grid .div5 {
+        grid-column: span 2 / span 2;
+        grid-column-start: 2;
+        grid-row-start: 3;
+    }
+}

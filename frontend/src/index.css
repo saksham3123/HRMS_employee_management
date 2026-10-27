@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+button:not(.dashq-mobile-scrim),
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+[role="button"] {
+  border-radius: 12px !important;
+}

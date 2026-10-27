@@ -1,0 +1,229 @@
+/*------------------------------------------------------------------
+[Base CSS]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.2
+Last change:    23 July, 2026
+-------------------------------------------------------------------*/
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    font-size: calc(var(--base-font-size) * var(--font-scale));
+    height: 100%;
+}
+
+body {
+    font-family: var(--app-font-family);
+    font-size: 1rem;
+    margin: 0;
+    transition: background-color 0.25s ease, color 0.25s ease, font-size 0.2s ease;
+}
+
+.font-mono{
+    font-family: var(--font-mono);
+}
+
+a:hover {
+    color: var(--bs-primary);
+}
+
+.brand,
+.color-inherit {
+    color: inherit;
+}
+
+.icon-button:hover {
+    color: var(--bs-primary);
+}
+
+.icon-button:focus {
+    color: var(--bs-primary);
+    outline: none;
+    box-shadow: none;
+}
+
+.fs-8 {
+    font-size: calc(var(--base-font-size) - 8px);
+}
+
+.fs-10 {
+    font-size: calc(var(--base-font-size) - 6px);
+}
+
+.fs-12 {
+    font-size: calc(var(--base-font-size) - 4px);
+}
+
+.fs-14 {
+    font-size: calc(var(--base-font-size) - 2px);
+}
+
+.app-border {
+    border-color: var(--app-border) !important;
+}
+
+.bg-app-body {
+    background: var(--bs-app-body);
+}
+
+.bg-primary-gradient {
+    background: var(--bs-primary);
+    background: linear-gradient(135deg, var(--bs-primary) 0%, var(--bs-primary-dark) 100%) !important;
+}
+
+.card.bg-primary:hover,
+.card.bg-primary-gradient:hover {
+    background: linear-gradient(180deg, var(--bs-primary) 0%, var(--bs-primary-dark) 100%) !important;
+    color: var(--bs-white);
+}
+
+.card.bg-dark:hover {
+    background: linear-gradient(180deg, var(--bs-gray-900) 0%, var(--bs-gray-800) 100%) !important;
+    color: var(--bs-white);
+}
+
+.tab-text-gradient .nav-link.active,
+.text-gradient {
+    background: linear-gradient(to right, var(--bs-primary) 0%, var(--bs-primary-dark) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Extra gradient class */
+.bg-gradient-orange{
+    background: linear-gradient(135deg, #ff8a8a, #e5504a);
+}
+.bg-gradient-blue{
+    background: linear-gradient(135deg,#5fd0e0,#2f8dff);
+}
+.bg-gradient-purple{
+    background: linear-gradient(135deg,#b083ff,#6d4fd1);
+}
+.bg-gradient-yallow{
+    background: linear-gradient(135deg,#ffd36e,#f2a93b);
+}
+.bg-gradient-green{
+    background: linear-gradient(135deg, #22c58b, #17a877);
+}
+
+/* =============== Setting CSS  */
+.theme-swatches li {
+    width: 24px;
+    height: 24px;
+    position: relative;
+}
+
+.theme-swatches li:hover {
+    cursor: pointer;
+    opacity: .7;
+    transition: var(--transition-3s);
+}
+
+.theme-swatches li.active::after {
+    position: absolute;
+    content: "\F272";
+    font-family: 'bootstrap-icons' !important;
+    font-size: 16px;
+    color: var(--bs-white);
+    left: 4px;
+}
+
+.font-size-setting .btn.active,
+.font-setting .btn.active {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.setting-switch-toggle li{
+    margin-bottom: 10px;
+}
+
+/* =============== date range picker   */
+.daterangepicker {
+    border-radius: 16px;
+    background: rgba(var(--bs-card-bg-rgb), .3);
+    border-color: var(--bs-border-color);
+    backdrop-filter: blur(20px) saturate(100%);
+    box-shadow: var(--bs-box-shadow) !important;
+}
+
+.daterangepicker .drp-buttons {
+    border-color: var(--bs-border-color);
+}
+
+.daterangepicker .calendar-table {
+    background-color: transparent;
+    border: 0;
+}
+
+.daterangepicker td.off,
+.daterangepicker td.off.in-range,
+.daterangepicker td.off.start-date,
+.daterangepicker td.off.end-date {
+    background: rgba(var(--bs-primary-rgb), .05);
+}
+
+.daterangepicker td.active,
+.daterangepicker td.active:hover {
+    background: rgba(var(--bs-primary-rgb), 1);
+}
+
+.daterangepicker td.available:hover,
+.daterangepicker th.available:hover {
+    background: rgba(var(--bs-primary-rgb), .2);
+    color: var(--bs-primary);
+}
+
+/* Start media css */
+
+@media (min-width: 576px) {
+    #user-tab-Post .object-fit-cover {
+        width: 200px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .form-select.w-auto {
+        width: 100% !important;
+    }
+
+    .chat-body {
+        max-height: calc(100vh - 220px);
+    }
+
+    .offcanvas.offcanvas-end {
+        border: 0;
+    }
+}
+
+@media (min-width: 992px) {
+    .body-sidebar-vh .body-sidebar {
+        height: calc(100vh - 113px);
+        margin-top: 10px;
+        border-radius: var(--bs-border-radius-xl);
+        background: rgba(var(--bs-dark-rgb), .03);
+        padding: 24px !important;
+    }
+
+    .body-sidebar-vh.app-body-fullscreen .body-sidebar {
+        height: calc(100vh - 24px);
+    }
+
+    .page-header .js-daterange {
+        min-width: 200px;
+    }
+    .offcanvas{
+        border: var(--bs-offcanvas-border-width) solid var(--bs-offcanvas-border-color);
+    }
+}
+
+@media (min-width: 1200px) { 
+    #notifications_drawer,
+    #chat_drawer{
+        width: 500px;
+    }
+}

@@ -1,0 +1,28 @@
+/*------------------------------------------------------------------
+[App Notification Drawer]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.0
+Last change:    19 June, 2026
+-------------------------------------------------------------------*/
+.notif-item+.notif-item {
+    border-top: 1px solid var(--bs-border-color);
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    position: relative;
+    border-radius: 30px;
+    padding-block: 4px;
+    color: var(--bs-gray-700);
+}
+
+.nav-tabs .nav-link:hover {
+    background: rgba(var(--bs-primary-rgb), .2);
+}
+
+.nav-tabs .nav-link.active {
+    background-color: var(--bs-primary);
+    color: var(--bs-white);
+}

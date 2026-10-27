@@ -1,5 +1,6 @@
 import express from "express"
 import authMiddleware from "../middleware/auth.middleware.js"
+import adminMiddleware from "../middleware/admin.middleware.js"
 import { registerUser  , getAllUsers, deleteUser} from "../controllers/user.controller.js"
 import { getAllTodayAttendance, getMonthlyPayrollSummary, getUserMonthlyReport , getMonthlyPayrollByEmployee } from "../controllers/attendance.controller.js"
 import requirePermission from "../middleware/permission.middleware.js"
@@ -10,7 +11,7 @@ const router = express.Router()
 router.use(authMiddleware)
 
 
-router.post("/users" ,requirePermission("users.create"), registerUser)
+router.post("/users", adminMiddleware, requirePermission("users.create"), registerUser)
 router.get("/users", requirePermission("users.view"), getAllUsers)
 router.delete("/users/:userId" , requirePermission("users.deactivate"), deleteUser)
 

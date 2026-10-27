@@ -1,0 +1,303 @@
+/*------------------------------------------------------------------
+[App card design css]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.1
+Last change:    08 July, 2026
+-------------------------------------------------------------------*/
+.row-deck>[class*=col-] {
+    display: flex;
+}
+
+.row-deck>.col .card,
+.row-deck>[class*=col-] .card {
+    flex: 1 1 auto;
+}
+
+.bg-card {
+    background-color: var(--bs-card-bg) !important;
+}
+
+.glass-effect {
+    .card{
+        &:after {
+            background: rgba(var(--bs-card-bg-rgb), .3);
+            backdrop-filter: blur(20px) saturate(100%);
+        }
+    }
+    &.bg-image .card .table>:not(caption)>*>* {
+        border-color: rgba(var(--bs-card-bg-rgb), 1);
+    }
+}
+
+.card {
+    background-color: transparent;
+    border-color: rgba(var(--bs-card-bg-rgb), 1);
+    position: relative;
+    border-bottom-width: 3px;
+    margin-top: 21px;
+    &:after {
+        position: absolute;
+        content: '';
+        width: 100%;
+        height: 100%;
+        background: rgba(var(--bs-card-bg-rgb), 1);
+        left: 0;
+        top: 0;
+        z-index: -1;
+    }
+
+    &.rounded:after {
+        border-radius: var(--bs-border-radius);
+    }
+    
+    &.rounded-3:after {
+        border-radius: var(--bs-border-radius-lg);
+    }
+    
+    &.rounded-4:after {
+        border-radius: calc(var(--bs-border-radius-xl) - 2px);
+    }
+    
+    &.rounded-5:after {
+        border-radius: var(--bs-border-radius-xxl);
+    }
+
+    .card-title {
+        position: absolute;
+        top: -22px;
+        background: rgba(var(--bs-dark-rgb), .03);
+        width: calc(100% - 56px);
+        height: 21px;
+        transform: translateX(-50%);
+        left: 50%;
+        padding-top: 3px;
+
+        .dropdown-toggle {
+            display: flex;
+            height: 20px;
+            width: 20px;
+            align-items: center;
+            justify-content: center;
+            &:after {
+                display: none;
+            }
+        }
+        .dropdown>a {
+            color: inherit;
+        }
+    }
+
+    &.primary {
+        border-color: var(--bs-primary) !important;
+    }
+
+    &.primary>.card-title {
+        background-color: var(--bs-primary);
+    }
+
+    &.danger {
+        border-color: var(--bs-danger) !important;
+    }
+
+    &.danger>.card-title {
+        background-color: var(--bs-danger);
+    }
+
+    &.warning {
+        border-color: var(--bs-warning) !important;
+    }
+
+    &.warning>.card-title {
+        background-color: var(--bs-warning);
+    }
+
+    &.success {
+        border-color: var(--bs-success) !important;
+    }
+
+    &.success>.card-title {
+        background-color: var(--bs-success);
+    }
+
+    &.dark {
+        border-color: var(--bs-light-text-emphasis) !important;
+    }
+
+    &.dark>.card-title {
+        background-color: var(--bs-light-text-emphasis);
+    }
+
+    &.mini {
+        border-top-left-radius: 0 !important;
+        &::after{
+            border-top-left-radius: 0 !important;
+        }
+        .card-title {
+            left: -1px;
+            transform: none;
+        }
+    }
+
+    &.shadow-active {
+        box-shadow: var(--bs-box-shadow-sm) !important;
+    }
+
+    .table>:not(caption)>*>* {
+        background-color: transparent !important;
+        padding: .5rem .95rem !important;
+        border-color: var(--bs-border-color);
+    }
+
+    &.primary>.card-title,
+    &.danger>.card-title,
+    &.warning>.card-title,
+    &.success>.card-title,
+    &.dark>.card-title {
+        color: var(--bs-white);
+    }
+}
+
+
+.card-option {
+    li {
+        width: 1rem;
+        height: 1rem;
+        &::hover {
+            cursor: pointer;
+        }
+    }
+}
+
+.radius-0{
+    .card{
+        &.rounded:after,
+        &.rounded-3:after,
+        &.rounded-4:after,
+        &.rounded-5:after {
+            border-radius: 0 !important;
+        }
+    }
+}
+
+/* [data-bs-theme=light] {
+    .card:hover {
+        background: linear-gradient(135deg, #fff7ef, #f5f9ff, #fff3f7) !important;
+    }
+} */
+
+/* card design */
+.card-design1 {
+    .card-corner {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        &.bottom-left {
+            bottom: 0;
+            left: 0;
+        }
+        &.bottom-right {
+            bottom: 0;
+            right: 0;
+        }
+    }
+    svg path {
+        fill: var(--dynamic-color);
+    }
+    .card-body {
+        position: relative;
+    }
+    .card-footer {
+        background: var(--dynamic-color);
+        color: var(--bs-white);
+        border: 0;
+    }
+}
+
+/* =============== Card table css */
+.card-table{
+
+    tbody {
+        tr:last-child td {
+            border-bottom: 0;
+        }
+        tr.active-row td {
+            background: rgba(var(--bs-primary-rgb), .1) !important;
+        }
+    }
+    
+    &.cellsspacing {
+        border-collapse: separate;
+        border-spacing: 0 5px;
+        tr{
+            th {
+                font-size: 12px !important;
+                font-weight: normal;
+                text-transform: uppercase;
+            }
+            td {
+                padding: 10px 16px;
+                background: rgba(var(--bs-dark-rgb), .03) !important;
+                border: 1px solid rgba(var(--bs-card-bg-rgb), 1);
+                border-bottom-width: 3px;
+                border-right: 0;
+            }
+            th:first-child,
+            td:first-child {
+                border-top-left-radius: var(--bs-border-radius-lg);
+                border-bottom-left-radius: var(--bs-border-radius-lg);
+            }
+            th:last-child,
+            td:last-child {
+                border-top-right-radius: var(--bs-border-radius-lg);
+                border-bottom-right-radius: var(--bs-border-radius-lg);
+                border-right: 1px solid rgba(var(--bs-card-bg-rgb), 1);
+            }
+
+            &:hover td {
+                background: rgba(var(--bs-card-bg-rgb), 1) !important;
+            }
+        }
+    }
+}
+
+/* Responsive css for card design */
+@media (max-width: 991.98px) {
+    .card .card-title {
+        width: calc(100% - 38px);
+    }
+}
+
+/* This css for dark version only */
+[data-bs-theme=dark] {
+
+    .card {
+        border-color: var(--bs-border-color);
+
+        &.shadow-active {
+            box-shadow: 0 0.125rem 0.25rem rgb(255 255 255 / 8%) !important;
+        }
+
+        &.dark {
+            .card-title {
+                color: var(--bs-black);
+                background: var(--bs-white);
+            }
+        }
+        &.primary{
+            .card-title {
+                background: var(--bs-primary);
+            }
+        }
+        &.danger{
+            .card-title {
+                background: var(--bs-danger);
+            }
+        }
+    }
+
+    /* .card:hover {
+        background: linear-gradient(135deg, #251f19, #141c26, #271921) !important;
+    } */
+}

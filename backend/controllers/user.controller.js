@@ -15,24 +15,39 @@ export const loginUser = async (req, res) => {
             })
         }
 
-        const result = await pool.query(
-            `SELECT
-         u.id,
-         u.name,
-         u.email,
-         u.password,
-         u.is_active,
-         r.name AS role
-       FROM users u
-       JOIN user_roles ur ON ur.user_id = u.id
-       JOIN roles r ON r.id = ur.role_id
-       WHERE LOWER(u.email) = LOWER($1)
-       LIMIT 1`,
-            [email.trim()]
-        )
+        
+const result = await pool.query(
+    `SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.password,
+        u.is_active,
+        (
+            SELECT r.name
+            FROM user_roles ur
+            JOIN roles r ON r.id = ur.role_id
+            WHERE ur.user_id = u.id
+            ORDER BY r.id
+            LIMIT 1
+        ) AS role,
+        COALESCE(
+            (
+                SELECT json_agg(DISTINCT p.permission_key)
+                FROM user_roles ur
+                JOIN role_permissions rp ON rp.role_id = ur.role_id
+                JOIN permissions p ON p.id = rp.permission_id
+                WHERE ur.user_id = u.id
+            ),
+            '[]'::json
+        ) AS permissions
+    FROM users u
+    WHERE LOWER(u.email) = LOWER($1)
+    LIMIT 1`,
+    [email.trim()]
+);
 
-
-        const user = result.rows[0]
+const user = result.rows[0];
 
 
         if (!user) {
@@ -73,16 +88,19 @@ export const loginUser = async (req, res) => {
 
         )
 
-        res.status(200).json({
-            message: "Login Successful",
-            token,
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-            },
-        });
+      
+res.status(200).json({
+    message: "Login Successful",
+    token,
+    user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        permissions: user.permissions,
+    },
+});
+
 
 
 

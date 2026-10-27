@@ -1,0 +1,254 @@
+/*------------------------------------------------------------------
+[Animation CSS]
+
+Template:       DashQ - Bootstrap HTML Admin Dashboard Template
+
+Version:        1.0.1
+Last change:    06 July, 2026
+-------------------------------------------------------------------*/
+.li_animate>li {
+    opacity: 0;
+    -webkit-animation: eliment-animation .3s ease-in-out .33333s;
+    animation: eliment-animation .3s ease-in-out .33333s;
+    -webkit-animation-fill-mode: forwards;
+    animation-fill-mode: forwards
+}
+
+.li_animate>li:hover {
+    z-index: 999
+}
+
+.li_animate>li:nth-child(1) {
+    -webkit-animation-delay: .01s;
+    animation-delay: .01s
+}
+
+.li_animate>li:nth-child(2) {
+    -webkit-animation-delay: .04s;
+    animation-delay: .04s
+}
+
+.li_animate>li:nth-child(3) {
+    -webkit-animation-delay: .08s;
+    animation-delay: .08s
+}
+
+.li_animate>li:nth-child(4) {
+    -webkit-animation-delay: .12s;
+    animation-delay: .12s
+}
+
+.li_animate>li:nth-child(5) {
+    -webkit-animation-delay: .16s;
+    animation-delay: .16s
+}
+
+.li_animate>li:nth-child(6) {
+    -webkit-animation-delay: .2s;
+    animation-delay: .2s
+}
+
+.li_animate>li:nth-child(7) {
+    -webkit-animation-delay: .24s;
+    animation-delay: .24s
+}
+
+.li_animate>li:nth-child(8) {
+    -webkit-animation-delay: .28s;
+    animation-delay: .28s
+}
+
+.li_animate>li:nth-child(9) {
+    -webkit-animation-delay: .32s;
+    animation-delay: .32s
+}
+
+.li_animate>li:nth-child(10) {
+    -webkit-animation-delay: .36s;
+    animation-delay: .36s
+}
+
+.li_animate>li:nth-child(11) {
+    -webkit-animation-delay: .4s;
+    animation-delay: .4s
+}
+
+.li_animate>li:nth-child(12) {
+    -webkit-animation-delay: .44s;
+    animation-delay: .44s
+}
+
+.li_animate>li:nth-child(13) {
+    -webkit-animation-delay: .48s;
+    animation-delay: .48s
+}
+
+.li_animate>li:nth-child(14) {
+    -webkit-animation-delay: .52s;
+    animation-delay: .52s
+}
+
+.li_animate>li:nth-child(15) {
+    -webkit-animation-delay: .56s;
+    animation-delay: .56s
+}
+
+.li_animate>li:nth-child(16) {
+    -webkit-animation-delay: .6s;
+    animation-delay: .6s
+}
+
+.li_animate>li:nth-child(17) {
+    -webkit-animation-delay: .64s;
+    animation-delay: .64s
+}
+
+.li_animate>li:nth-child(18) {
+    -webkit-animation-delay: .68s;
+    animation-delay: .68s
+}
+
+.li_animate>li:nth-child(19) {
+    -webkit-animation-delay: .72s;
+    animation-delay: .72s
+}
+
+.li_animate>li:nth-child(20) {
+    -webkit-animation-delay: .76s;
+    animation-delay: .76s
+}
+
+@-webkit-keyframes eliment-animation {
+    to {
+        opacity: 1
+    }
+}
+
+@keyframes eliment-animation {
+    to {
+        opacity: 1
+    }
+}
+
+
+/* Base tab pane - ensure visible content animates smoothly */
+.tab-pane {
+    position: relative;
+}
+
+/* When switching to a new tab: slide in from the right */
+.tab-animate-from-right {
+    animation: tabSlideFromRight 260ms ease-out;
+}
+
+/* When switching to a new tab: slide in from the left */
+.tab-animate-from-left {
+    animation: tabSlideFromLeft 260ms ease-out;
+}
+
+@keyframes tabSlideFromRight {
+    from {
+        transform: translateX(24px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes tabSlideFromLeft {
+    from {
+        transform: translateX(-24px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+
+/* btn onclick ripple effect */
+.btn-ripple {
+    position: relative;
+    overflow: hidden;
+}
+
+.ripple-element {
+    position: absolute;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.5);
+    transform: scale(0);
+    animation: ripple-animation 0.6s linear;
+    pointer-events: none;
+}
+
+@keyframes ripple-animation {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+.bullet-dot {
+    position: absolute;
+    right: 11px;
+    top: 8px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.4;
+    }
+
+    50% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(0.8);
+        opacity: 0.4;
+    }
+}
+
+/* Pulse & Status */
+.status-pulse {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+    box-shadow: 0 0 0 0 rgba(var(--dynamic-color) 0.7);
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(var(--dynamic-color), 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* 1. Define the Animation */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pulse-dot{
+  width:11px;height:11px;border-radius:50%;background:var(--bs-warning);position:relative;flex-shrink:0;
+}
+.pulse-dot::after{
+  content:'';position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--bs-warning);
+  animation:pulseRing 1.8s ease-out infinite;
+}
+@keyframes pulseRing{0%{transform:scale(.5);opacity:.9;}100%{transform:scale(1.9);opacity:0;}}

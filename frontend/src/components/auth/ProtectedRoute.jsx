@@ -9,10 +9,7 @@ export default function ProtectedRoute({ allowedRole }) {
   }
 
   if (allowedRole && user.role !== allowedRole) {
-    const correctPath =
-      user.role === "admin" ? "/admin" : "/user";
-
-    return <Navigate to={correctPath} replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;
