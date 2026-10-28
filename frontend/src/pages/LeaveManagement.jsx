@@ -8,15 +8,18 @@ export default function LeaveManagement() {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
 
-  const canViewAll = user?.role === "hr" && hasPermission("leave.manage");
-  const canReview = canViewAll;
-  const canApply = hasPermission("leave.apply");
+  const canViewAll =
+    ["hr", "admin"].includes(user?.role) && hasPermission("leave.manage");
+  const canReview = user?.role === "hr" && hasPermission("leave.manage");
+  const canApply =
+    user?.role !== "admin" && hasPermission("leave.apply");
 
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [reviewingId, setReviewingId] = useState(null);
+  const [reviewRemarks, setReviewRemarks] = useState({});
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [leaveTypesError, setLeaveTypesError] = useState("");
@@ -129,12 +132,6 @@ export default function LeaveManagement() {
   };
 
   const handleReview = async (requestId, status) => {
-    const reviewComment = window.prompt(
-      `Optional comment for ${status.toLowerCase()} this request:`
-    );
-
-    if (reviewComment === null) return;
-
     setError("");
     setSuccess("");
     setReviewingId(requestId);
@@ -142,10 +139,17 @@ export default function LeaveManagement() {
     try {
       await apiRequest(`/leave/${requestId}/review`, {
         method: "PATCH",
-        body: JSON.stringify({ status, reviewComment }),
+        body: JSON.stringify({
+          status,
+          reviewComment: reviewRemarks[requestId]?.trim() ?? "",
+        }),
       });
 
       setSuccess(`Leave request ${status.toLowerCase()} successfully.`);
+      setReviewRemarks((previous) => ({
+        ...previous,
+        [requestId]: "",
+      }));
       try {
         const requests = await fetchLeaveRequests();
         setLeaveRequests(requests);
@@ -192,7 +196,6 @@ export default function LeaveManagement() {
       <div className="dashq-page-heading">
         <div>
           <div className="dashq-eyebrow">WORKSPACE / LEAVE</div>
-          <h1>Leave Management</h1>
           <p>Submit leave requests and track their status.</p>
         </div>
       </div>
@@ -366,36 +369,69 @@ export default function LeaveManagement() {
                     </div>
                   )}
 
-                  {canReview && request.status?.toLowerCase() === "pending" && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={reviewingId === request.id}
-                        onClick={() => handleReview(request.id, "approved")}
-                        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        disabled={reviewingId === request.id}
-                        onClick={() => handleReview(request.id, "rejected")}
-                        className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                      >
-                        Deny
-                      </button>
-                      <button
-                        type="button"
-                        disabled={reviewingId === request.id}
-                        onClick={() => handleReview(request.id, "cancelled")}
-                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
-                      >
-                        Cancel Request
-                      </button>
+                  {canReview &&
+                    ["pending", "approved"].includes(
+                      request.status?.toLowerCase()
+                    ) && (
+                    <div className="mt-4 space-y-3">
+                      <div>
+                        <label
+                          htmlFor={`review-remarks-${request.id}`}
+                          className="mb-1 block text-sm font-medium text-slate-700"
+                        >
+                          HR remarks
+                        </label>
+                        <textarea
+                          id={`review-remarks-${request.id}`}
+                          value={reviewRemarks[request.id] ?? ""}
+                          onChange={(event) =>
+                            setReviewRemarks((previous) => ({
+                              ...previous,
+                              [request.id]: event.target.value,
+                            }))
+                          }
+                          maxLength={1000}
+                          rows={2}
+                          placeholder="Add remarks for this decision (optional)"
+                          disabled={reviewingId === request.id}
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {request.status?.toLowerCase() === "pending" && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={reviewingId === request.id}
+                              onClick={() => handleReview(request.id, "approved")}
+                              className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              disabled={reviewingId === request.id}
+                              onClick={() => handleReview(request.id, "rejected")}
+                              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                            >
+                              Deny
+                            </button>
+                            <button
+                              type="button"
+                              disabled={reviewingId === request.id}
+                              onClick={() => handleReview(request.id, "cancelled")}
+                              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+                            >
+                              Cancel Request
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
-                  {canReview && request.status?.toLowerCase() === "approved" && (
-                    <div className="mt-4">
+                  {canReview &&
+                    request.status?.toLowerCase() === "approved" && (
+                    <div className="mt-3">
                       <button
                         type="button"
                         disabled={reviewingId === request.id}

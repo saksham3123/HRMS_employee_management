@@ -7,6 +7,9 @@ import userRoutes from "./routes/user.route.js";
 import adminRoutes from "./routes/admin.route.js";
 import attendanceRoutes from "./routes/attedance.route.js";
 import leaveRoutes from "./routes/leave.route.js"
+import departmentRoutes from "./routes/department.route.js"
+import designationRoutes from "./routes/designation.route.js";
+
 
 const app = express();
 
@@ -19,6 +22,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/leave", leaveRoutes)
+app.use("/api/departments" , departmentRoutes)
+app.use("/api/designations", designationRoutes);
 
 app.get("/", (req, res) => {
   res.send("backend running..");

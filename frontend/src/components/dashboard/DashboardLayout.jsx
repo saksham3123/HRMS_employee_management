@@ -5,7 +5,7 @@ import { usePermissions } from "../../hooks/usePermissions";
 const navigation = [
   { key: "overview", label: "Overview", icon: "bi-grid-1x2", permission: null },
   { key: "employees", label: "Employee Management", icon: "bi-people", permission: "users.view" },
-  { key: "leaves", label: "Leave Management", icon: "bi-calendar2-check", permission: "leave.apply" },
+  { key: "leaves", label: "Leave Management", icon: "bi-calendar2-check", permissions: ["leave.apply", "leave.manage"] },
   { key: "attendance", label: "Attendance", icon: "bi-clock-history", permission: "attendance.view.all" },
   { key: "payroll", label: "Payroll", icon: "bi-wallet2", permission: "payroll.view.all" },
   { key: "myAttendance", label: "My Attendance", icon: "bi-calendar-check", permission: "attendance.view.self", role: "employee" },
@@ -22,7 +22,8 @@ export default function DashboardLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
   const visibleNavigation = navigation.filter(
     (item) =>
-      (!item.permission || hasPermission(item.permission)) &&
+      (!(item.permission || item.permissions) ||
+        (item.permissions ?? [item.permission]).some(hasPermission)) &&
       (!item.role || item.role === user?.role)
   );
   const activeLabel =
