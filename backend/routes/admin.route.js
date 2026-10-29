@@ -1,7 +1,9 @@
 import express from "express"
 import authMiddleware from "../middleware/auth.middleware.js"
 import adminMiddleware from "../middleware/admin.middleware.js"
-import { registerUser  , getAllUsers, deleteUser} from "../controllers/user.controller.js"
+import {
+  registerUser,  getAllUsers,  deleteUser,  updateEmployee
+} from "../controllers/user.controller.js";
 import { getAllTodayAttendance, getMonthlyPayrollSummary, getUserMonthlyReport , getMonthlyPayrollByEmployee } from "../controllers/attendance.controller.js"
 import requirePermission from "../middleware/permission.middleware.js"
 
@@ -14,6 +16,11 @@ router.use(authMiddleware)
 router.post("/users", adminMiddleware, requirePermission("users.create"), registerUser)
 router.get("/users", requirePermission("users.view"), getAllUsers)
 router.delete("/users/:userId" , requirePermission("users.deactivate"), deleteUser)
+router.put(
+  "/employees/:employeeId",
+  requirePermission("employees.update"),
+  updateEmployee
+);
 
 
 router.get("/attendance/:userId/monthly/:month/:year",  requirePermission("attendance.view.all"),getUserMonthlyReport)

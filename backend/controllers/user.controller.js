@@ -1,4 +1,3 @@
-
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import pool from "../config/postgres.js";
@@ -188,10 +187,20 @@ export const registerUser = async (req, res) => {
         // create user
 
         const userResult = await client.query(
-            `INSERT INTO users (name, email, password)
-             VALUES ($1, $2, $3)
-             RETURNING id, name, email`,
-            [normalizedName, normalizedEmail, hashedPassword]
+            `INSERT INTO employees (
+        user_id,
+        employee_number,
+        department_id,
+        designation_id,
+        joining_date
+    )
+    VALUES ($1, $2, $3, $4, CURRENT_DATE)`,
+    [
+        user.id,
+        employeeNumber,
+        null,
+        null
+    ]
         );
 
         const user = userResult.rows[0];
@@ -400,29 +409,50 @@ export const updateProfile = async (req, res) => {
 
 export const getAllUsers = async (req, res) => {
     try {
-        const result = await pool.query(
-            `SELECT
-                u.id,
-                u.name,
-                u.email,
-                u.is_active,
-                u.created_at,
-                COALESCE(
-                    ARRAY_AGG(DISTINCT r.name)
-                    FILTER (WHERE r.name IS NOT NULL),
-                    ARRAY[]::TEXT[]
-                ) AS roles
-             FROM users u
-             LEFT JOIN user_roles ur ON ur.user_id = u.id
-             LEFT JOIN roles r ON r.id = ur.role_id
-             GROUP BY
-                u.id,
-                u.name,
-                u.email,
-                u.is_active,
-                u.created_at
-             ORDER BY u.created_at DESC`
-        );
+         const result = await pool.query(
+    `SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.is_active,
+        u.created_at,
+        COALESCE(
+            ARRAY_AGG(DISTINCT r.name)
+            FILTER (WHERE r.name IS NOT NULL),
+            ARRAY[]::TEXT[]
+        ) AS roles,
+        e.id AS employee_id,
+        e.employee_number,
+        e.phone,
+        e.department_id,
+        d.name AS department_name,
+        e.designation_id,
+        ds.title AS designation_title,
+        e.joining_date,
+        e.employment_status
+     FROM users u
+     LEFT JOIN user_roles ur ON ur.user_id = u.id
+     LEFT JOIN roles r ON r.id = ur.role_id
+     LEFT JOIN employees e ON e.user_id = u.id
+     LEFT JOIN departments d ON d.id = e.department_id
+     LEFT JOIN designations ds ON ds.id = e.designation_id
+     GROUP BY
+        u.id,
+        u.name,
+        u.email,
+        u.is_active,
+        u.created_at,
+        e.id,
+        e.employee_number,
+        e.phone,
+        e.department_id,
+        d.name,
+        e.designation_id,
+        ds.title,
+        e.joining_date,
+        e.employment_status
+     ORDER BY u.created_at DESC`
+);
 
         return res.status(200).json({
             count: result.rows.length,
@@ -556,5 +586,122 @@ export const deleteUser = async (req, res) => {
         if (client) {
             client.release();
         }
+    }
+};
+
+
+
+
+export const updateEmployee = async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+        const {
+            department_id,
+            designation_id,
+            employment_status
+        } = req.body;
+
+        if (!/^[1-9]\d*$/.test(employeeId)) {
+            return res.status(400).json({
+                message: "Invalid employee ID"
+            })
+        }
+
+        if (
+            department_id === undefined &&
+            designation_id === undefined &&
+            employment_status === undefined
+        ) {
+            return res.status(400).json({
+                message: "Provide at least one field to update"
+            });
+        }
+
+        for (const value of [department_id, designation_id]) {
+            if (
+                value !== undefined &&
+                value !== null &&
+                (!Number.isSafeInteger(value) || value <= 0)
+            ) {
+                return res.status(400).json({
+                    message: "Department and designation IDs must be positive integers or null"
+                });
+            }
+        }
+
+        const validStatuses = [
+            "active",
+            "on_leave",
+            "probation",
+            "resigned",
+            "terminated"
+        ];
+
+        if (
+            employment_status !== undefined &&
+            !validStatuses.includes(employment_status)
+        ) {
+            return res.status(400).json({
+                message: "Invalid employment status"
+            });
+        }
+
+        const result = await pool.query(
+            `UPDATE employees
+             SET
+                department_id = CASE
+                    WHEN $1::BOOLEAN THEN $2::INTEGER
+                    ELSE department_id
+                END,
+                designation_id = CASE
+                    WHEN $3::BOOLEAN THEN $4::INTEGER
+                    ELSE designation_id
+                END,
+                employment_status = COALESCE(
+                    $5::VARCHAR, employment_status
+                ),
+                updated_at = CURRENT_TIMESTAMP
+             WHERE id = $6
+             RETURNING
+                id,
+                user_id,
+                employee_number,
+                department_id,
+                designation_id,
+                employment_status,
+                joining_date`,
+            [
+                department_id !== undefined,
+                department_id ?? null,
+                designation_id !== undefined,
+                designation_id ?? null,
+                employment_status ?? null,
+                employeeId
+            ]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Employee not found"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Employee updated successfully",
+            employee: result.rows[0]
+        });
+
+    } catch (error) {
+        if (error.code === "23503") {
+            return res.status(400).json({
+                message: "Department or designation does not exist"
+            });
+        }
+
+        console.error("Update employee error:", error);
+
+        return res.status(500).json({
+            message: "Failed to update employee"
+        });
     }
 };

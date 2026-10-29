@@ -49,7 +49,6 @@ export const getDesignationById = async (req, res)=>{
          d.id,
          d.title,
          d.description,
-         d.created_at,
          COUNT(e.id)::INTEGER AS employee_count
        FROM designations d
        LEFT JOIN employees e ON e.designation_id = d.id
@@ -96,7 +95,7 @@ export const createDesignation =  async (req , res) => {
      const result = await pool.query(
       `INSERT INTO designations (title, description)
        VALUES ($1, $2)
-       RETURNING id, title, description, created_at`,
+       RETURNING id, title, description`,
       [title.trim(), description?.trim() || null]
     );
 
@@ -146,7 +145,7 @@ export const updateDesignation= async (req , res) => {
       `UPDATE designations
        SET title = $1, description = $2
        WHERE id = $3
-       RETURNING id, title, description, created_at`,
+       RETURNING id, title, description `,
       [title.trim(), description?.trim() || null, id]
     );
 
