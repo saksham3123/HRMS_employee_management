@@ -299,6 +299,102 @@ input[type="reset"],
     height: 34px
 }
 
+.dashq-top-avatar-button {
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer
+}
+
+.dashq-top-avatar-button:focus-visible,
+.dashq-account-logout:focus-visible {
+    outline: 3px solid #93c5fd;
+    outline-offset: 3px
+}
+
+.dashq-account-menu {
+    position: relative
+}
+
+.dashq-account-dropdown {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    z-index: 1030;
+    width: min(300px, calc(100vw - 32px));
+    padding: 22px 20px 18px;
+    border: 1px solid var(--hrms-border);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 14px 36px rgb(15 23 42 / 16%);
+    text-align: center
+}
+
+.dashq-account-dropdown::before {
+    position: absolute;
+    top: -12px;
+    right: 0;
+    left: 0;
+    height: 12px;
+    content: ""
+}
+
+.dashq-account-avatar {
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    margin: 0 auto 13px;
+    border-radius: 50%;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 22px;
+    font-weight: 800
+}
+
+.dashq-account-dropdown h2 {
+    margin: 0;
+    color: var(--hrms-ink);
+    font-size: 18px;
+    font-weight: 700
+}
+
+.dashq-account-email {
+    margin: 5px 0 13px;
+    color: var(--hrms-muted);
+    font-size: 13px;
+    overflow-wrap: anywhere
+}
+
+.dashq-account-role {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: capitalize
+}
+
+.dashq-account-logout {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 23px;
+    padding: 10px 14px;
+    border: 1px solid #fecaca;
+    background: #fff;
+    color: #dc2626;
+    font-weight: 600;
+    cursor: pointer
+}
+
 .dashq-menu-toggle {
     display: none;
     border: 0;

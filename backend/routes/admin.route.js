@@ -6,6 +6,7 @@ import {
 } from "../controllers/user.controller.js";
 import { getAllTodayAttendance, getMonthlyPayrollSummary, getUserMonthlyReport , getMonthlyPayrollByEmployee } from "../controllers/attendance.controller.js"
 import requirePermission from "../middleware/permission.middleware.js"
+import { assignReportingManager, getReportingManager, removeReportingManager, updateReportingManager } from "../controllers/reporting.controller.js";
 
 
 const router = express.Router()
@@ -39,4 +40,30 @@ router.get(
 );
 
 
+
+
+// Reporting manager management — admin / authorized HR
+router.post(
+  "/employees/:employeeId/manager",
+  requirePermission("employees.update"),
+  assignReportingManager
+);
+
+router.put(
+  "/employees/:employeeId/manager",
+  requirePermission("employees.update"),
+  updateReportingManager
+);
+
+router.get(
+  "/employees/:employeeId/manager",
+  requirePermission("employees.view"),
+  getReportingManager
+);
+
+router.delete(
+  "/employees/:employeeId/manager",
+  requirePermission("employees.update"),
+  removeReportingManager
+);
 export default router

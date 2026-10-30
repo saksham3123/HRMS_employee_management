@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { usePermissions } from "../../hooks/usePermissions";
 
@@ -20,6 +20,8 @@ export default function DashboardLayout({
   const { user, logout } = useAuth();
   const { hasPermission } = usePermissions();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
+  const accountMenuRef = useRef(null);
   const visibleNavigation = navigation.filter(
     (item) =>
       (!(item.permission || item.permissions) ||
@@ -28,6 +30,26 @@ export default function DashboardLayout({
   );
   const activeLabel =
     navigation.find((item) => item.key === activeItem)?.label ?? activeItem;
+
+  useEffect(() => {
+    if (!accountDialogOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setAccountDialogOpen(false);
+    };
+    const handlePointerDown = (event) => {
+      if (!accountMenuRef.current?.contains(event.target)) {
+        setAccountDialogOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [accountDialogOpen]);
 
   return (
     <div className="dashq-shell">
@@ -56,7 +78,78 @@ export default function DashboardLayout({
         <div className="dashq-sidebar-user"><div className="dashq-avatar">{(user?.name || "U").slice(0, 1).toUpperCase()}</div><div className="dashq-user-copy"><strong>{user?.name || "User"}</strong><span>{user?.role || "Member"}</span></div><button type="button" title="Log out" aria-label="Log out" className="dashq-logout" onClick={logout}><i className="bi bi-box-arrow-right" /></button></div>
       </aside>
       <main className="dashq-main">
-        <header className="dashq-topbar"><button className="dashq-menu-toggle" aria-label="Open navigation" onClick={() => setMobileOpen(true)}><i className="bi bi-list" /></button><div className="dashq-breadcrumb">Workspace <i className="bi bi-chevron-right" /> <strong>{activeLabel}</strong></div><div className="dashq-top-actions"><span className="dashq-status"><span /> System operational</span><button type="button" className="dashq-top-icon" aria-label="Notifications"><i className="bi bi-bell" /><b /></button><div className="dashq-top-avatar">{(user?.name || "U").slice(0, 1).toUpperCase()}</div></div></header>
+        <header className="dashq-topbar">
+          <button
+            className="dashq-menu-toggle"
+            aria-label="Open navigation"
+            onClick={() => setMobileOpen(true)}
+          >
+            <i className="bi bi-list" />
+          </button>
+          <div className="dashq-breadcrumb">
+            Workspace <i className="bi bi-chevron-right" />{" "}
+            <strong>{activeLabel}</strong>
+          </div>
+          <div className="dashq-top-actions">
+            <span className="dashq-status">
+              <span /> System operational
+            </span>
+            <button
+              type="button"
+              className="dashq-top-icon"
+              aria-label="Notifications"
+            >
+              <i className="bi bi-bell" />
+              <b />
+            </button>
+            <div
+              className="dashq-account-menu"
+              ref={accountMenuRef}
+              onMouseEnter={() => setAccountDialogOpen(true)}
+              onMouseLeave={() => setAccountDialogOpen(false)}
+            >
+              <button
+                type="button"
+                className="dashq-top-avatar-button"
+                aria-label="Open account details"
+                aria-haspopup="true"
+                aria-expanded={accountDialogOpen}
+                aria-controls="dashq-account-menu"
+                onClick={() => setAccountDialogOpen(true)}
+              >
+                <span className="dashq-top-avatar">
+                  {(user?.name || "U").slice(0, 1).toUpperCase()}
+                </span>
+              </button>
+              {accountDialogOpen && (
+                <section
+                  className="dashq-account-dropdown"
+                  id="dashq-account-menu"
+                  aria-label="Account details"
+                >
+                  <div className="dashq-account-avatar">
+                    {(user?.name || "U").slice(0, 1).toUpperCase()}
+                  </div>
+                  <h2>{user?.name || "User"}</h2>
+                  {user?.email && (
+                    <p className="dashq-account-email">{user.email}</p>
+                  )}
+                  <span className="dashq-account-role">
+                    {user?.role || "Member"}
+                  </span>
+                  <button
+                    type="button"
+                    className="dashq-account-logout"
+                    onClick={logout}
+                  >
+                    <i className="bi bi-box-arrow-right" />
+                    Log out
+                  </button>
+                </section>
+              )}
+            </div>
+          </div>
+        </header>
         <div className="dashq-main-content">{children}</div>
       </main>
     </div>

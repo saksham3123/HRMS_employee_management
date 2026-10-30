@@ -164,7 +164,7 @@ Last change:    08 July, 2026
     li {
         width: 1rem;
         height: 1rem;
-        &::hover {
+        &:hover {
             cursor: pointer;
         }
     }

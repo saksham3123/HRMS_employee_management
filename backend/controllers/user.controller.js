@@ -119,102 +119,66 @@ export const registerUser = async (req, res) => {
     let transactionStarted = false;
 
     try {
-        client = await pool.connect();
-
-        const { name, email, password } = req.body;
-
-
+        const { name, email, password, role = "employee" } = req.body;
+        const validRoles = ["admin", "hr", "manager", "employee"];
         if (
             typeof name !== "string" ||
             !name.trim() ||
             typeof email !== "string" ||
             !email.trim() ||
             typeof password !== "string" ||
-            !password
+            password.length < 8 ||
+            !validRoles.includes(role)
         ) {
             return res.status(400).json({
-                message: "Name, email and password are required",
+                message: "Name, valid email, password of at least 8 characters, and a valid role are required",
             });
         }
-
 
         const normalizedName = name.trim();
         const normalizedEmail = email.trim().toLowerCase();
 
-
+        client = await pool.connect();
         await client.query("BEGIN");
         transactionStarted = true;
-        // checked if user already exists
 
         const existingUser = await client.query(
-            `SELECT id FROM users WHERE LOWER(email) = LOWER($1)`,
+            "SELECT id FROM users WHERE LOWER(email) = $1",
             [normalizedEmail]
         );
 
-
-       if (existingUser.rows.length > 0) {
-    await client.query("ROLLBACK");
-    transactionStarted = false;
-
-    return res.status(409).json({
-        message: "User already exists",
-    });
-}
-
-
-        const roleResult = await client.query(
-            `SELECT id FROM roles WHERE name = $1`,
-            ["employee"]
-        );
-
-
-
-        if (roleResult.rows.length === 0) {
-            throw new Error("Employee role not found in the roles table");
+        if (existingUser.rows.length > 0) {
+            await client.query("ROLLBACK");
+            transactionStarted = false;
+            return res.status(409).json({
+                message: "User already exists",
+            });
         }
 
-
-
-
-
-
-
-        //hash password
-
         const hashedPassword = await bcrypt.hash(password, 10);
-
-
-        // create user
-
         const userResult = await client.query(
-            `INSERT INTO employees (
-        user_id,
-        employee_number,
-        department_id,
-        designation_id,
-        joining_date
-    )
-    VALUES ($1, $2, $3, $4, CURRENT_DATE)`,
-    [
-        user.id,
-        employeeNumber,
-        null,
-        null
-    ]
+            `INSERT INTO users (name, email, password)
+             VALUES ($1, $2, $3)
+             RETURNING id, name, email`,
+            [normalizedName, normalizedEmail, hashedPassword]
         );
-
         const user = userResult.rows[0];
-
         const employeeNumber = `EMP-${String(user.id).padStart(4, "0")}`;
 
         await client.query(
             `INSERT INTO employees (user_id, employee_number, joining_date)
-     VALUES ($1, $2, CURRENT_DATE)`,
+             VALUES ($1, $2, CURRENT_DATE)`,
             [user.id, employeeNumber]
-        );;
+        );
 
+        const roleResult = await client.query(
+            "SELECT id FROM roles WHERE name = $1",
+            [role]
+        );
 
-
+        if (roleResult.rows.length === 0) {
+            throw new Error(`Role "${role}" does not exist in the roles table`);
+        }
 
         await client.query(
             `INSERT INTO user_roles (user_id, role_id)
@@ -223,53 +187,43 @@ export const registerUser = async (req, res) => {
         );
 
         await client.query("COMMIT");
-transactionStarted = false;
+        transactionStarted = false;
 
-
-
-        res.status(201).json({
-            message: "User registered sucessfully",
+        return res.status(201).json({
+            message: "User registered successfully",
             user: {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role: "employee",
-
-            }
-        })
-
-
-
-
-
-
-
+                role,
+            },
+        });
     }  catch (error) {
-    if (client && transactionStarted) {
-        try {
-            await client.query("ROLLBACK");
-        } catch (rollbackError) {
-            console.error("Registration rollback error:", rollbackError);
+        if (client && transactionStarted) {
+            try {
+                await client.query("ROLLBACK");
+            } catch (rollbackError) {
+                console.error("Registration rollback error:", rollbackError);
+            }
+        }
+
+        if (error.code === "23505") {
+            return res.status(409).json({
+                message: "Email or employee number is already in use",
+            });
+        }
+
+        console.error("PostgreSQL registerUser error:", error);
+
+        return res.status(500).json({
+            message: "Failed to register user",
+        });
+    } finally {
+        if (client) {
+            client.release();
         }
     }
-
-    if (error.code === "23505") {
-        return res.status(409).json({
-            message: "Email or employee number is already in use",
-        });
-    }
-
-    console.error("PostgreSQL registerUser error:", error);
-
-    return res.status(500).json({
-        message: "Failed to register user",
-    });
-} finally {
-    if (client) {
-        client.release();
-    }
-}
-}
+};
 
 
 
@@ -593,27 +547,45 @@ export const deleteUser = async (req, res) => {
 
 
 export const updateEmployee = async (req, res) => {
+    let client;
+    let transactionStarted = false;
+
     try {
         const { employeeId } = req.params;
         const {
             department_id,
             designation_id,
-            employment_status
+            employment_status,
+            role,
         } = req.body;
 
         if (!/^[1-9]\d*$/.test(employeeId)) {
             return res.status(400).json({
-                message: "Invalid employee ID"
-            })
+                message: "Invalid employee ID",
+            });
         }
 
         if (
             department_id === undefined &&
             designation_id === undefined &&
-            employment_status === undefined
+            employment_status === undefined &&
+            role === undefined
         ) {
             return res.status(400).json({
-                message: "Provide at least one field to update"
+                message: "Provide at least one field to update",
+            });
+        }
+
+        if (role !== undefined && req.user?.role !== "admin") {
+            return res.status(403).json({
+                message: "Only administrators can change user roles",
+            });
+        }
+
+        const validRoles = ["admin", "hr", "manager", "employee"];
+        if (role !== undefined && !validRoles.includes(role)) {
+            return res.status(400).json({
+                message: "Invalid role",
             });
         }
 
@@ -624,7 +596,7 @@ export const updateEmployee = async (req, res) => {
                 (!Number.isSafeInteger(value) || value <= 0)
             ) {
                 return res.status(400).json({
-                    message: "Department and designation IDs must be positive integers or null"
+                    message: "Department and designation IDs must be positive integers or null",
                 });
             }
         }
@@ -642,66 +614,174 @@ export const updateEmployee = async (req, res) => {
             !validStatuses.includes(employment_status)
         ) {
             return res.status(400).json({
-                message: "Invalid employment status"
+                message: "Invalid employment status",
             });
         }
 
-        const result = await pool.query(
-            `UPDATE employees
-             SET
-                department_id = CASE
-                    WHEN $1::BOOLEAN THEN $2::INTEGER
-                    ELSE department_id
-                END,
-                designation_id = CASE
-                    WHEN $3::BOOLEAN THEN $4::INTEGER
-                    ELSE designation_id
-                END,
-                employment_status = COALESCE(
-                    $5::VARCHAR, employment_status
-                ),
-                updated_at = CURRENT_TIMESTAMP
-             WHERE id = $6
-             RETURNING
-                id,
-                user_id,
-                employee_number,
-                department_id,
-                designation_id,
-                employment_status,
-                joining_date`,
-            [
-                department_id !== undefined,
-                department_id ?? null,
-                designation_id !== undefined,
-                designation_id ?? null,
-                employment_status ?? null,
-                employeeId
-            ]
+        client = await pool.connect();
+        await client.query("BEGIN");
+        transactionStarted = true;
+
+        const employeeResult = await client.query(
+            `SELECT id, user_id
+             FROM employees
+             WHERE id = $1
+             FOR UPDATE`,
+            [Number(employeeId)]
         );
 
-        if (result.rows.length === 0) {
+        if (employeeResult.rows.length === 0) {
+            await client.query("ROLLBACK");
+            transactionStarted = false;
             return res.status(404).json({
-                message: "Employee not found"
+                message: "Employee not found",
             });
         }
+
+        const employee = employeeResult.rows[0];
+
+        if (role !== undefined) {
+            if (!employee.user_id) {
+                await client.query("ROLLBACK");
+                transactionStarted = false;
+                return res.status(409).json({
+                    message: "This employee record is not linked to a user account",
+                });
+            }
+
+            const currentRoles = await client.query(
+                `SELECT r.name
+                 FROM user_roles ur
+                 JOIN roles r ON r.id = ur.role_id
+                 WHERE ur.user_id = $1`,
+                [employee.user_id]
+            );
+            const isCurrentlyAdmin = currentRoles.rows.some(
+                (currentRole) => currentRole.name === "admin"
+            );
+
+            if (
+                Number(employee.user_id) === req.user.userId &&
+                role !== "admin"
+            ) {
+                await client.query("ROLLBACK");
+                transactionStarted = false;
+                return res.status(409).json({
+                    message: "You cannot remove your own administrator role",
+                });
+            }
+
+            if (isCurrentlyAdmin && role !== "admin") {
+                const adminCount = await client.query(
+                    `SELECT COUNT(DISTINCT u.id)::INTEGER AS count
+                     FROM users u
+                     JOIN user_roles ur ON ur.user_id = u.id
+                     JOIN roles r ON r.id = ur.role_id
+                     WHERE r.name = 'admin'
+                       AND u.is_active = TRUE`
+                );
+
+                if (adminCount.rows[0].count <= 1) {
+                    await client.query("ROLLBACK");
+                    transactionStarted = false;
+                    return res.status(409).json({
+                        message: "Cannot remove the last active administrator",
+                    });
+                }
+            }
+
+            const roleResult = await client.query(
+                "SELECT id FROM roles WHERE name = $1",
+                [role]
+            );
+
+            if (roleResult.rows.length === 0) {
+                throw new Error(`Role "${role}" does not exist in the roles table`);
+            }
+
+            await client.query(
+                "DELETE FROM user_roles WHERE user_id = $1",
+                [employee.user_id]
+            );
+            await client.query(
+                `INSERT INTO user_roles (user_id, role_id)
+                 VALUES ($1, $2)`,
+                [employee.user_id, roleResult.rows[0].id]
+            );
+        }
+
+        let updatedEmployee = employee;
+        if (
+            department_id !== undefined ||
+            designation_id !== undefined ||
+            employment_status !== undefined
+        ) {
+            const result = await client.query(
+                `UPDATE employees
+                 SET
+                    department_id = CASE
+                        WHEN $1::BOOLEAN THEN $2::INTEGER
+                        ELSE department_id
+                    END,
+                    designation_id = CASE
+                        WHEN $3::BOOLEAN THEN $4::INTEGER
+                        ELSE designation_id
+                    END,
+                    employment_status = COALESCE(
+                        $5::VARCHAR, employment_status
+                    ),
+                    updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $6
+                 RETURNING
+                    id,
+                    user_id,
+                    employee_number,
+                    department_id,
+                    designation_id,
+                    employment_status,
+                    joining_date`,
+                [
+                    department_id !== undefined,
+                    department_id ?? null,
+                    designation_id !== undefined,
+                    designation_id ?? null,
+                    employment_status ?? null,
+                    Number(employeeId),
+                ]
+            );
+            updatedEmployee = result.rows[0];
+        }
+
+        await client.query("COMMIT");
+        transactionStarted = false;
 
         return res.status(200).json({
             message: "Employee updated successfully",
-            employee: result.rows[0]
+            employee: updatedEmployee,
         });
-
     } catch (error) {
+        if (client && transactionStarted) {
+            try {
+                await client.query("ROLLBACK");
+            } catch (rollbackError) {
+                console.error("Update employee rollback error:", rollbackError);
+            }
+        }
+
         if (error.code === "23503") {
             return res.status(400).json({
-                message: "Department or designation does not exist"
+                message: "Department or designation does not exist",
             });
         }
 
         console.error("Update employee error:", error);
 
         return res.status(500).json({
-            message: "Failed to update employee"
+            message: "Failed to update employee",
         });
+    } finally {
+        if (client) {
+            client.release();
+        }
     }
 };

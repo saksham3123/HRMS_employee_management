@@ -13,6 +13,13 @@ export const createEmployee = async (employeeData) => {
   });
 };
 
+export const updateEmployee = async (employeeId, employeeData) => {
+  return await apiRequest(`/admin/employees/${employeeId}`, {
+    method: "PUT",
+    body: JSON.stringify(employeeData),
+  });
+};
+
 // Delete an employee account
 export const deleteEmployee = async (userId) => {
   return await apiRequest(`/admin/users/${userId}`, {

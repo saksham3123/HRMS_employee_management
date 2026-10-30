@@ -20,6 +20,8 @@ export default function DashboardModuleContent({
   employeesLoading,
   onDeleteEmployee,
   deletingEmployeeId,
+  onRoleChange,
+  updatingRoleId,
   todayAttendance,
   todayAttendanceLoading,
   attendanceError,
@@ -61,6 +63,8 @@ export default function DashboardModuleContent({
             hasPermission("users.deactivate") ? onDeleteEmployee : undefined
           }
           deletingId={deletingEmployeeId}
+          onRoleChange={user?.role === "admin" ? onRoleChange : undefined}
+          updatingRoleId={updatingRoleId}
         />
       </div>
     );

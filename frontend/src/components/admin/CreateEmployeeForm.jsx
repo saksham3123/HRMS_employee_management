@@ -8,6 +8,7 @@ export default function CreateEmployeeForm({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("employee");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -18,12 +19,13 @@ export default function CreateEmployeeForm({
     setSuccess("");
 
     try {
-      await onCreate({ name, email, password });
+      await onCreate({ name, email, password, role });
 
-      setSuccess("Employee account created successfully.");
+      setSuccess("User account created successfully.");
       setName("");
       setEmail("");
       setPassword("");
+      setRole("employee");
     } catch (err) {
       setError(err.message || "Failed to create employee account.");
     }
@@ -33,10 +35,10 @@ export default function CreateEmployeeForm({
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-slate-900">
-          Create Employee
+          Create User Account
         </h2>
         <p className="mt-1 text-sm text-slate-500">
-          Register a new employee account.
+          Register a new user account and assign a role.
         </p>
       </div>
 
@@ -74,9 +76,30 @@ export default function CreateEmployeeForm({
             onChange={(e) => setEmail(e.target.value)}
             required
             autoComplete="email"
-            placeholder="employee@example.com"
+            placeholder="user@example.com"
             className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
+        </div>
+
+        <div>
+          <label
+            htmlFor="employee-role"
+            className="mb-1 block text-sm font-medium text-slate-700"
+          >
+            Role
+          </label>
+          <select
+            id="employee-role"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            required
+            className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          >
+            <option value="employee">Employee</option>
+            <option value="manager">Manager</option>
+            <option value="hr">HR</option>
+            <option value="admin">Admin</option>
+          </select>
         </div>
 
         <div>
@@ -116,7 +139,7 @@ export default function CreateEmployeeForm({
           disabled={creating}
           className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {creating ? "Creating..." : "Create Employee"}
+          {creating ? "Creating..." : "Create User"}
         </button>
       </form>
     </section>

@@ -218,6 +218,9 @@ export const updateReportingManager = async (req, res) => {
   }
 };
 
+
+
+
 // 3. View an employee's manager.
 // Admins can view any employee; other users can view their own manager.
 export const getReportingManager = async (req, res) => {

@@ -18,6 +18,7 @@ import {
   deleteEmployee,
   getAllEmployees,
   getTodayAttendanceForAdmin,
+  updateEmployee,
 } from "../services/adminService";
 import "../components/dashboard/Dashboard.css";
 
@@ -44,6 +45,7 @@ export default function Dashboard() {
   const [employeeSuccess, setEmployeeSuccess] = useState("");
   const [creatingEmployee, setCreatingEmployee] = useState(false);
   const [deletingEmployeeId, setDeletingEmployeeId] = useState(null);
+  const [updatingRoleId, setUpdatingRoleId] = useState(null);
 
   const [todayAttendance, setTodayAttendance] = useState([]);
   const [todayAttendanceLoading, setTodayAttendanceLoading] = useState(false);
@@ -189,6 +191,26 @@ export default function Dashboard() {
     }
   };
 
+  const handleChangeEmployeeRole = async (
+    employeeId,
+    role,
+    userId
+  ) => {
+    setUpdatingRoleId(userId);
+    setEmployeeError("");
+    setEmployeeSuccess("");
+
+    try {
+      await updateEmployee(employeeId, { role });
+      setEmployeeSuccess("User role updated successfully.");
+      await fetchEmployees();
+    } catch (error) {
+      setEmployeeError(error.message || "Failed to update user role.");
+    } finally {
+      setUpdatingRoleId(null);
+    }
+  };
+
   const openModule = (moduleKey) => {
     setSearch("");
     handleNavigate(moduleKey);
@@ -236,6 +258,8 @@ export default function Dashboard() {
             employeesLoading={employeesLoading}
             onDeleteEmployee={handleDeleteEmployee}
             deletingEmployeeId={deletingEmployeeId}
+            onRoleChange={handleChangeEmployeeRole}
+            updatingRoleId={updatingRoleId}
             todayAttendance={todayAttendance}
             todayAttendanceLoading={todayAttendanceLoading}
             attendanceError={attendanceError}
