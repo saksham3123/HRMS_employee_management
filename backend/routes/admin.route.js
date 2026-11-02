@@ -58,6 +58,7 @@ router.put(
 router.get(
   "/employees/:employeeId/manager",
   requirePermission("employees.view"),
+  requirePermission("users.view"),
   getReportingManager
 );
 

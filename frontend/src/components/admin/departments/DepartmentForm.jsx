@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const initialForm = {
     name: "",
@@ -12,14 +12,10 @@ function DepartmentForm({
   loading = false,
 }) {
 
-  const [formData , setFormData] = useState(initialForm);
-
-  useEffect(()=>{
-    setFormData({
-      name: department?.name ?? "",
-      description: department?.description ?? "",
-    })
-  },[department])
+  const [formData, setFormData] = useState({
+    name: department?.name ?? initialForm.name,
+    description: department?.description ?? initialForm.description,
+  });
 
   const handleChange = (event) =>{
     const {name , value} = event.target;

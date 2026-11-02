@@ -7,6 +7,9 @@ import TodaySummary from "../attendance/TodaySummary";
 import AttendanceActions from "../attendance/AttendanceActions";
 import AttendanceTable from "../attendance/AttendanceTable";
 import LeaveManagement from "../../pages/LeaveManagement";
+import Departments from "../admin/departments/Departments";
+import Designations from "../admin/designations/Designations";
+import ManagerAssignment from "../admin/managers/ManagerAssignment";
 
 export default function DashboardModuleContent({
   activeModule,
@@ -67,6 +70,44 @@ export default function DashboardModuleContent({
           updatingRoleId={updatingRoleId}
         />
       </div>
+    );
+  }
+
+  if (activeModule === "departments") {
+    const canManageDepartments = hasPermission("departments.manage");
+    return (
+      <Departments
+        canView={canManageDepartments}
+        canCreate={canManageDepartments}
+        canEdit={canManageDepartments}
+        canDelete={canManageDepartments}
+      />
+    );
+  }
+
+  if (activeModule === "designations") {
+    const canManageDesignations = hasPermission("designations.manage");
+    return (
+      <Designations
+        canView={canManageDesignations}
+        canCreate={canManageDesignations}
+        canEdit={canManageDesignations}
+        canDelete={canManageDesignations}
+      />
+    );
+  }
+
+  if (activeModule === "managers") {
+    const canViewManagers =
+      hasPermission("users.view") && hasPermission("employees.view");
+    const canManageManagers = hasPermission("employees.update");
+    return (
+      <ManagerAssignment
+        canView={canViewManagers}
+        canCreate={canManageManagers}
+        canEdit={canManageManagers}
+        canDelete={canManageManagers}
+      />
     );
   }
 

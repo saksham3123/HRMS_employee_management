@@ -5,6 +5,9 @@ import { usePermissions } from "../../hooks/usePermissions";
 const navigation = [
   { key: "overview", label: "Overview", icon: "bi-grid-1x2", permission: null },
   { key: "employees", label: "Employee Management", icon: "bi-people", permission: "users.view" },
+  { key: "departments", label: "Departments", icon: "bi-diagram-3", permission: "departments.manage" },
+  { key: "designations", label: "Designations", icon: "bi-person-badge", permission: "designations.manage" },
+  { key: "managers", label: "Reporting Managers", icon: "bi-diagram-2", permission: "users.view" },
   { key: "leaves", label: "Leave Management", icon: "bi-calendar2-check", permissions: ["leave.apply", "leave.manage"] },
   { key: "attendance", label: "Attendance", icon: "bi-clock-history", permission: "attendance.view.all" },
   { key: "payroll", label: "Payroll", icon: "bi-wallet2", permission: "payroll.view.all" },

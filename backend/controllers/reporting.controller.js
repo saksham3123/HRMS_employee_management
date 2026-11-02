@@ -222,7 +222,7 @@ export const updateReportingManager = async (req, res) => {
 
 
 // 3. View an employee's manager.
-// Admins can view any employee; other users can view their own manager.
+// The route requires both employee-record and user-list permissions for this lookup.
 export const getReportingManager = async (req, res) => {
   const employeeId = Number(req.params.employeeId);
 
@@ -233,24 +233,6 @@ export const getReportingManager = async (req, res) => {
   }
 
   try {
-    const isAdmin = req.user?.role === "admin";
-
-    if (!isAdmin) {
-      const ownEmployee = await pool.query(
-        "SELECT id FROM employees WHERE user_id = $1",
-        [req.user.userId]
-      );
-
-      if (
-        ownEmployee.rows.length === 0 ||
-        Number(ownEmployee.rows[0].id) !== employeeId
-      ) {
-        return res.status(403).json({
-          message: "You can only view your own reporting manager.",
-        });
-      }
-    }
-
     const result = await pool.query(
       `SELECT
          e.id AS employee_id,
