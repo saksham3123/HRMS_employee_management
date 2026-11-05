@@ -7,6 +7,7 @@ export default function CreateEmployeeForm({
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("employee");
   const [error, setError] = useState("");
@@ -19,11 +20,12 @@ export default function CreateEmployeeForm({
     setSuccess("");
 
     try {
-      await onCreate({ name, email, password, role });
+      await onCreate({ name, email, phone, password, role });
 
       setSuccess("User account created successfully.");
       setName("");
       setEmail("");
+      setPhone("");
       setPassword("");
       setRole("employee");
     } catch (err) {
@@ -77,6 +79,28 @@ export default function CreateEmployeeForm({
             required
             autoComplete="email"
             placeholder="user@example.com"
+            className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="employee-phone"
+            className="mb-1 block text-sm font-medium text-slate-700"
+          >
+            Phone number
+          </label>
+          <input
+            id="employee-phone"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            required
+            maxLength={30}
+            autoComplete="tel"
+            pattern="[+0-9() .-]{7,30}"
+            title="Enter a phone number using digits and optional +, spaces, parentheses, periods, or hyphens."
+            placeholder="e.g. +1 555 123 4567"
             className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
         </div>

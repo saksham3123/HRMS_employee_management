@@ -1,5 +1,15 @@
 export const dashboardModules = [
   {
+    key: "team",
+    title: "My Team",
+    description: "View your direct reports, their departments, and designations.",
+    role: "manager",
+    icon: "bi-people",
+    section: "My workspace",
+    value: "Team",
+    color: "blue",
+  },
+  {
     key: "employees",
     title: "Employee Management",
     description: "View employee records and manage employee information.",
@@ -82,7 +92,10 @@ export const dashboardModules = [
   },
 ];
 
-export const hasModulePermission = (module, permissions) =>
-  (module.permissions ?? [module.permission]).some((permission) =>
-    permissions.includes(permission)
+export const hasModulePermission = (module, permissions) => {
+  const requiredPermissions = module.permissions ?? (
+    module.permission ? [module.permission] : []
   );
+  return requiredPermissions.length === 0 ||
+    requiredPermissions.some((permission) => permissions.includes(permission));
+};

@@ -139,6 +139,50 @@ export default function EmployeeProfile() {
                   </strong>
                 </div>
                 <div className="dashq-profile-field">
+                  <span>Department</span>
+                  <strong>{profile.department_name || "Not assigned"}</strong>
+                </div>
+                <div className="dashq-profile-field">
+                  <span>Designation</span>
+                  <strong>{profile.designation_title || "Not assigned"}</strong>
+                </div>
+                <div className="dashq-profile-field">
+                  <span>Reporting manager</span>
+                  <strong>
+                    {profile.reporting_manager_name || "Not assigned"}
+                  </strong>
+                  {profile.reporting_manager_email && (
+                    <span>{profile.reporting_manager_email}</span>
+                  )}
+                </div>
+                <div className="dashq-profile-field">
+                  <span>Phone</span>
+                  <strong>{profile.phone || "Not provided"}</strong>
+                </div>
+                <div className="dashq-profile-field">
+                  <span>Joining date</span>
+                  <strong>
+                    {profile.joining_date
+                      ? new Date(profile.joining_date).toLocaleDateString(
+                          undefined,
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }
+                        )
+                      : "Not available"}
+                  </strong>
+                </div>
+                <div className="dashq-profile-field">
+                  <span>Employment status</span>
+                  <strong>{profile.employment_status || "Not available"}</strong>
+                </div>
+                <div className="dashq-profile-field">
+                  <span>Role</span>
+                  <strong>{profile.role || "Not assigned"}</strong>
+                </div>
+                <div className="dashq-profile-field">
                   <span>Account status</span>
                   <strong>{profile.is_active ? "Active" : "Inactive"}</strong>
                 </div>

@@ -1,5 +1,7 @@
 {
   "dependencies": {
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "datatables.net-dt": "^3.1.4",
@@ -13,5 +15,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon index.js"
+  },
+  "devDependencies": {
+    "prisma": "^7.10.1"
   }
 }

@@ -212,7 +212,7 @@ export default function LeaveManagement() {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="space-y-6">
         {canApply && (
         <section className="dashq-content-panel">
           <div className="dashq-panel-heading">
@@ -308,7 +308,7 @@ export default function LeaveManagement() {
         </section>
         )}
 
-        <section className={`dashq-content-panel ${canApply ? "" : "xl:col-span-2"}`}>
+        <section className="dashq-content-panel">
           <div className="dashq-panel-heading">
             <div>
               <h2>{canViewAll ? "All Leave Requests" : "My Leave Requests"}</h2>

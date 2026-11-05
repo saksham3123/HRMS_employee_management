@@ -316,6 +316,12 @@ export const removeReportingManager = async (req, res) => {
 
 // 5. Get the authenticated manager's direct reports.
 export const getManagerTeam = async (req, res) => {
+  if (req.user?.role !== "manager") {
+    return res.status(403).json({
+      message: "Only managers can view a team.",
+    });
+  }
+
   try {
     const result = await pool.query(
       `SELECT

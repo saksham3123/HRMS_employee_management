@@ -4,6 +4,7 @@ import { usePermissions } from "../../hooks/usePermissions";
 
 const navigation = [
   { key: "overview", label: "Overview", icon: "bi-grid-1x2", permission: null },
+  { key: "team", label: "My Team", icon: "bi-people", role: "manager" },
   { key: "employees", label: "Employee Management", icon: "bi-people", permission: "users.view" },
   { key: "departments", label: "Departments", icon: "bi-diagram-3", permission: "departments.manage" },
   { key: "designations", label: "Designations", icon: "bi-person-badge", permission: "designations.manage" },

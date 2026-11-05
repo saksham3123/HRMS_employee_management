@@ -10,6 +10,7 @@ import LeaveManagement from "../../pages/LeaveManagement";
 import Departments from "../admin/departments/Departments";
 import Designations from "../admin/designations/Designations";
 import ManagerAssignment from "../admin/managers/ManagerAssignment";
+import ManagerTeam from "./ManagerTeam";
 
 export default function DashboardModuleContent({
   activeModule,
@@ -34,6 +35,10 @@ export default function DashboardModuleContent({
   fetchMyAttendance,
   attendanceHistory,
 }) {
+  if (activeModule === "team" && user?.role === "manager") {
+    return <ManagerTeam />;
+  }
+
   if (activeModule === "employees") {
     return (
       <div className="space-y-8">

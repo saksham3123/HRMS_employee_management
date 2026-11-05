@@ -119,24 +119,27 @@ export const registerUser = async (req, res) => {
     let transactionStarted = false;
 
     try {
-        const { name, email, password, role = "employee" } = req.body;
+        const { name, email, phone, password, role = "employee" } = req.body;
         const validRoles = ["admin", "hr", "manager", "employee"];
         if (
             typeof name !== "string" ||
             !name.trim() ||
             typeof email !== "string" ||
             !email.trim() ||
+            typeof phone !== "string" ||
+            !/^[+0-9() .-]{7,30}$/.test(phone.trim()) ||
             typeof password !== "string" ||
             password.length < 8 ||
             !validRoles.includes(role)
         ) {
             return res.status(400).json({
-                message: "Name, valid email, password of at least 8 characters, and a valid role are required",
+                message: "Name, valid email and phone number, password of at least 8 characters, and a valid role are required",
             });
         }
 
         const normalizedName = name.trim();
         const normalizedEmail = email.trim().toLowerCase();
+        const normalizedPhone = phone.trim();
 
         client = await pool.connect();
         await client.query("BEGIN");
@@ -166,9 +169,9 @@ export const registerUser = async (req, res) => {
         const employeeNumber = `EMP-${String(user.id).padStart(4, "0")}`;
 
         await client.query(
-            `INSERT INTO employees (user_id, employee_number, joining_date)
-             VALUES ($1, $2, CURRENT_DATE)`,
-            [user.id, employeeNumber]
+            `INSERT INTO employees (user_id, employee_number, phone, joining_date)
+             VALUES ($1, $2, $3, CURRENT_DATE)`,
+            [user.id, employeeNumber, normalizedPhone]
         );
 
         const roleResult = await client.query(
@@ -239,10 +242,33 @@ export const getProfile = async (req, res) => {
             u.name,
             u.email,
             u.is_active,
-            r.name AS role
+            r.name AS role,
+            e.id AS employee_id,
+            e.employee_number,
+            e.phone,
+            e.joining_date,
+            e.employment_status,
+            d.name AS department_name,
+            ds.title AS designation_title,
+            manager_user.name AS reporting_manager_name,
+            manager_user.email AS reporting_manager_email
             FROM users u
-            JOIN user_roles ur ON ur.user_id = u.id
-            JOIN roles r ON r.id = ur.role_id
+            LEFT JOIN LATERAL (
+                SELECT r.name
+                FROM user_roles ur
+                JOIN roles r ON r.id = ur.role_id
+                WHERE ur.user_id = u.id
+                ORDER BY r.name
+                LIMIT 1
+            ) r ON TRUE
+            LEFT JOIN employees e ON e.user_id = u.id
+            LEFT JOIN departments d ON d.id = e.department_id
+            LEFT JOIN designations ds ON ds.id = e.designation_id
+            LEFT JOIN employee_reporting er
+                ON er.employee_id = e.id
+               AND er.effective_to IS NULL
+            LEFT JOIN employees manager ON manager.id = er.manager_employee_id
+            LEFT JOIN users manager_user ON manager_user.id = manager.user_id
             WHERE u.id = $1
             LIMIT 1`,
             [req.user.userId]
