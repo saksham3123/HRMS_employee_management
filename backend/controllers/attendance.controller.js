@@ -1,16 +1,52 @@
-import pool from "../config/postgres.js";
+import prisma from "../config/prisma.js";
+
+// ---------- helpers ----------
 
 // Resolve the employee profile associated with the authenticated user.
-const getEmployeeByUserId = async (userId) => {
-  const result = await pool.query(
-    `SELECT id, user_id
-         FROM employees
-         WHERE user_id = $1`,
-    [userId]
-  );
+const getEmployeeByUserId = (userId) =>
+  prisma.employees.findUnique({
+    where: { user_id: userId },
+    select: { id: true, user_id: true },
+  });
 
-  return result.rows[0] ?? null;
+// "Today" according to PostgreSQL (CURRENT_DATE), so the date logic stays
+// exactly as before and doesn't depend on the Node server's timezone.
+const getDbToday = async () => {
+  const [{ today }] = await prisma.$queryRaw`SELECT CURRENT_DATE::text AS today`;
+  return new Date(`${today}T00:00:00.000Z`);
 };
+
+// First day of the month and first day of the next month, for DATE range filters.
+const getMonthRange = (year, month) => ({
+  gte: new Date(Date.UTC(year, month - 1, 1)),
+  lt: new Date(Date.UTC(year, month, 1)),
+});
+
+const isValidMonthYear = (month, year) =>
+  Number.isInteger(month) &&
+  month >= 1 &&
+  month <= 12 &&
+  Number.isInteger(year) &&
+  year >= 2000 &&
+  year <= 2100;
+
+// Prisma returns NUMERIC columns as Decimal objects. pg returned them as
+// strings like "8.00", so keep sending the same 2-decimal strings.
+// (Number() also handles raw-query results, whatever type they come back as.)
+const toMoneyString = (value) =>
+  value == null ? null : Number(value).toFixed(2);
+
+const serializeAttendance = (record) =>
+  record && {
+    ...record,
+    working_hours: toMoneyString(record.working_hours),
+    hourly_rate: toMoneyString(record.hourly_rate),
+    daily_pay: toMoneyString(record.daily_pay),
+  };
+
+const toNumber = (decimal) => (decimal == null ? 0 : Number(decimal));
+
+// ---------- controllers ----------
 
 // 1. Clock in
 export const clockIn = async (req, res) => {
@@ -23,25 +59,26 @@ export const clockIn = async (req, res) => {
       });
     }
 
-    const result = await pool.query(
-      `INSERT INTO attendance (employee_id, date, login_time)
-             VALUES ($1, CURRENT_DATE, CURRENT_TIMESTAMP)
-             ON CONFLICT (employee_id, date) DO NOTHING
-             RETURNING id, employee_id, date, login_time`,
-      [employee.id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(400).json({
-        message: "Attendance already marked for today",
-      });
-    }
+    // `date` is filled by the database default (CURRENT_DATE).
+    await prisma.attendance.create({
+      data: {
+        employee_id: employee.id,
+        login_time: new Date(),
+      },
+    });
 
     return res.status(201).json({
       message: "Attendance marked successfully",
     });
   } catch (error) {
-    console.error("PostgreSQL clockIn error:", error);
+    // Unique (employee_id, date) -> already clocked in today
+    if (error.code === "P2002") {
+      return res.status(400).json({
+        message: "Attendance already marked for today",
+      });
+    }
+
+    console.error("Prisma clockIn error:", error);
 
     return res.status(500).json({
       message: "Failed to mark attendance",
@@ -60,49 +97,38 @@ export const clockOut = async (req, res) => {
       });
     }
 
-    const result = await pool.query(
-      `UPDATE attendance
-       SET
-           logout_time = CURRENT_TIMESTAMP,
+    // Kept as SQL: hours and pay are calculated from login_time inside
+    // the database in a single atomic update, exactly as before.
+    const [updated] = await prisma.$queryRaw`
+      UPDATE attendance
+      SET
+          logout_time = CURRENT_TIMESTAMP,
+          working_hours = ROUND(
+              (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - login_time)) / 3600)::NUMERIC,
+              2
+          ),
+          daily_pay = ROUND(
+              (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - login_time)) / 3600)::NUMERIC * hourly_rate,
+              2
+          ),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE employee_id = ${employee.id}
+        AND date = CURRENT_DATE
+        AND logout_time IS NULL
+      RETURNING *`;
 
-           working_hours = ROUND(
-               (
-                   EXTRACT(
-                       EPOCH FROM (CURRENT_TIMESTAMP - login_time)
-                   ) / 3600
-               )::NUMERIC,
-               2
-           ),
+    if (!updated) {
+      const today = await prisma.attendance.findUnique({
+        where: {
+          employee_id_date: {
+            employee_id: employee.id,
+            date: await getDbToday(),
+          },
+        },
+        select: { id: true, logout_time: true },
+      });
 
-           daily_pay = ROUND(
-               (
-                   EXTRACT(
-                       EPOCH FROM (CURRENT_TIMESTAMP - login_time)
-                   ) / 3600
-               )::NUMERIC * hourly_rate,
-               2
-           ),
-
-           updated_at = CURRENT_TIMESTAMP
-
-       WHERE employee_id = $1
-         AND date = CURRENT_DATE
-         AND logout_time IS NULL
-
-       RETURNING *`,
-      [employee.id]
-    );
-
-    if (result.rows.length === 0) {
-      const today = await pool.query(
-        `SELECT id, logout_time
-         FROM attendance
-         WHERE employee_id = $1
-           AND date = CURRENT_DATE`,
-        [employee.id]
-      );
-
-      if (today.rows.length === 0) {
+      if (!today) {
         return res.status(400).json({
           message: "Please mark attendance first",
         });
@@ -115,19 +141,16 @@ export const clockOut = async (req, res) => {
 
     return res.status(200).json({
       message: "Clock out successful",
-      attendance: result.rows[0],
+      attendance: serializeAttendance(updated),
     });
-
   } catch (error) {
-    console.error("PostgreSQL clockOut error:", error);
+    console.error("Prisma clockOut error:", error);
 
     return res.status(500).json({
       message: "Failed to clock out",
     });
   }
 };
-
-
 
 // 3. Get today's attendance for the logged-in employee
 export const getTodayAttendance = async (req, res) => {
@@ -140,26 +163,26 @@ export const getTodayAttendance = async (req, res) => {
       });
     }
 
-    const result = await pool.query(
-      `SELECT *
-             FROM attendance
-             WHERE employee_id = $1
-               AND date = CURRENT_DATE
-             LIMIT 1`,
-      [employee.id]
-    );
+    const attendance = await prisma.attendance.findUnique({
+      where: {
+        employee_id_date: {
+          employee_id: employee.id,
+          date: await getDbToday(),
+        },
+      },
+    });
 
-    if (result.rows.length === 0) {
+    if (!attendance) {
       return res.status(200).json({
         message: "No attendance marked today",
       });
     }
 
     return res.status(200).json({
-      attendance: result.rows[0],
+      attendance: serializeAttendance(attendance),
     });
   } catch (error) {
-    console.error("PostgreSQL getTodayAttendance error:", error);
+    console.error("Prisma getTodayAttendance error:", error);
 
     return res.status(500).json({
       message: "Failed to retrieve today's attendance",
@@ -178,20 +201,17 @@ export const getAttendanceHistory = async (req, res) => {
       });
     }
 
-    const result = await pool.query(
-      `SELECT *
-             FROM attendance
-             WHERE employee_id = $1
-             ORDER BY date DESC`,
-      [employee.id]
-    );
+    const records = await prisma.attendance.findMany({
+      where: { employee_id: employee.id },
+      orderBy: { date: "desc" },
+    });
 
     return res.status(200).json({
-      count: result.rows.length,
-      attendance: result.rows,
+      count: records.length,
+      attendance: records.map(serializeAttendance),
     });
   } catch (error) {
-    console.error("PostgreSQL getAttendanceHistory error:", error);
+    console.error("Prisma getAttendanceHistory error:", error);
 
     return res.status(500).json({
       message: "Failed to retrieve attendance history",
@@ -212,28 +232,21 @@ export const getUserMonthlyReport = async (req, res) => {
       });
     }
 
-    if (
-      !Number.isInteger(month) ||
-      month < 1 ||
-      month > 12 ||
-      !Number.isInteger(year) ||
-      year < 2000 ||
-      year > 2100
-    ) {
+    if (!isValidMonthYear(month, year)) {
       return res.status(400).json({
         message: "Please provide a valid month and year",
       });
     }
 
-    const userResult = await pool.query(
-      `SELECT u.id, u.name, u.email, e.id AS employee_id
-             FROM users u
-             LEFT JOIN employees e ON e.user_id = u.id
-             WHERE u.id = $1`,
-      [userId]
-    );
-
-    const user = userResult.rows[0];
+    const user = await prisma.users.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        employees: { select: { id: true } },
+      },
+    });
 
     if (!user) {
       return res.status(404).json({
@@ -241,37 +254,28 @@ export const getUserMonthlyReport = async (req, res) => {
       });
     }
 
-    if (!user.employee_id) {
+    if (!user.employees) {
       return res.status(404).json({
         message: "Employee profile not found",
       });
     }
 
-    const attendanceResult = await pool.query(
-      `SELECT *
-             FROM attendance
-             WHERE employee_id = $1
-               AND date >= make_date($2, $3, 1)
-               AND date < (make_date($2, $3, 1) + INTERVAL '1 month')
-             ORDER BY date ASC`,
-      [user.employee_id, year, month]
-    );
+    const where = {
+      employee_id: user.employees.id,
+      date: getMonthRange(year, month),
+    };
 
-    const attendance = attendanceResult.rows;
-
-    const totalsResult = await pool.query(
-      `SELECT
-                 COUNT(*)::INTEGER AS total_working_days,
-                 COALESCE(SUM(working_hours), 0) AS total_working_hours,
-                 COALESCE(SUM(daily_pay), 0) AS total_pay
-             FROM attendance
-             WHERE employee_id = $1
-               AND date >= make_date($2, $3, 1)
-               AND date < (make_date($2, $3, 1) + INTERVAL '1 month')`,
-      [user.employee_id, year, month]
-    );
-
-    const totals = totalsResult.rows[0];
+    const [attendance, totals] = await Promise.all([
+      prisma.attendance.findMany({
+        where,
+        orderBy: { date: "asc" },
+      }),
+      prisma.attendance.aggregate({
+        where,
+        _count: { _all: true },
+        _sum: { working_hours: true, daily_pay: true },
+      }),
+    ]);
 
     return res.status(200).json({
       user: {
@@ -282,14 +286,14 @@ export const getUserMonthlyReport = async (req, res) => {
       report: {
         month,
         year,
-        totalWorkingDays: totals.total_working_days,
-        totalWorkingHours: Number(totals.total_working_hours),
-        totalPay: Number(totals.total_pay),
+        totalWorkingDays: totals._count._all,
+        totalWorkingHours: toNumber(totals._sum.working_hours),
+        totalPay: toNumber(totals._sum.daily_pay),
       },
-      attendance,
+      attendance: attendance.map(serializeAttendance),
     });
   } catch (error) {
-    console.error("PostgreSQL getUserMonthlyReport error:", error);
+    console.error("Prisma getUserMonthlyReport error:", error);
 
     return res.status(500).json({
       message: "Failed to generate monthly attendance report",
@@ -300,25 +304,33 @@ export const getUserMonthlyReport = async (req, res) => {
 // 6. Get today's attendance for all employees
 export const getAllTodayAttendance = async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT
-                 a.*,
-                 u.id AS user_id,
-                 u.name,
-                 u.email
-             FROM attendance a
-             JOIN employees e ON e.id = a.employee_id
-             JOIN users u ON u.id = e.user_id
-             WHERE a.date = CURRENT_DATE
-             ORDER BY a.login_time DESC`
-    );
+    const records = await prisma.attendance.findMany({
+      where: {
+        date: await getDbToday(),
+        // Same as the old INNER JOIN users
+        employees: { users: { isNot: null } },
+      },
+      include: {
+        employees: {
+          select: { users: { select: { id: true, name: true, email: true } } },
+        },
+      },
+      orderBy: { login_time: "desc" },
+    });
+
+    const attendance = records.map(({ employees, ...record }) => ({
+      ...serializeAttendance(record),
+      user_id: employees.users.id,
+      name: employees.users.name,
+      email: employees.users.email,
+    }));
 
     return res.status(200).json({
-      count: result.rows.length,
-      attendance: result.rows,
+      count: attendance.length,
+      attendance,
     });
   } catch (error) {
-    console.error("PostgreSQL getAllTodayAttendance error:", error);
+    console.error("Prisma getAllTodayAttendance error:", error);
 
     return res.status(500).json({
       message: "Failed to retrieve today's attendance",
@@ -332,41 +344,27 @@ export const getMonthlyPayrollSummary = async (req, res) => {
     const month = Number(req.params.month);
     const year = Number(req.params.year);
 
-    if (
-      !Number.isInteger(month) ||
-      month < 1 ||
-      month > 12 ||
-      !Number.isInteger(year) ||
-      year < 2000 ||
-      year > 2100
-    ) {
+    if (!isValidMonthYear(month, year)) {
       return res.status(400).json({
         message: "Invalid month or year",
       });
     }
 
-    const result = await pool.query(
-      `SELECT
-                 COALESCE(SUM(daily_pay), 0) AS total_payroll,
-                 COALESCE(SUM(working_hours), 0) AS total_working_hours,
-                 COUNT(*)::INTEGER AS attendance_count
-             FROM attendance
-             WHERE date >= make_date($1, $2, 1)
-               AND date < (make_date($1, $2, 1) + INTERVAL '1 month')`,
-      [year, month]
-    );
-
-    const summary = result.rows[0];
+    const summary = await prisma.attendance.aggregate({
+      where: { date: getMonthRange(year, month) },
+      _count: { _all: true },
+      _sum: { daily_pay: true, working_hours: true },
+    });
 
     return res.status(200).json({
       month,
       year,
-      totalPayroll: Number(summary.total_payroll),
-      totalWorkingHours: Number(summary.total_working_hours),
-      attendanceCount: summary.attendance_count,
+      totalPayroll: toNumber(summary._sum.daily_pay),
+      totalWorkingHours: toNumber(summary._sum.working_hours),
+      attendanceCount: summary._count._all,
     });
   } catch (error) {
-    console.error("PostgreSQL getMonthlyPayrollSummary error:", error);
+    console.error("Prisma getMonthlyPayrollSummary error:", error);
 
     return res.status(500).json({
       message: "Failed to retrieve monthly payroll summary",
@@ -380,47 +378,47 @@ export const getMonthlyPayrollByEmployee = async (req, res) => {
     const month = Number(req.params.month);
     const year = Number(req.params.year);
 
-    if (
-      !Number.isInteger(month) ||
-      month < 1 ||
-      month > 12 ||
-      !Number.isInteger(year) ||
-      year < 2000 ||
-      year > 2100
-    ) {
+    if (!isValidMonthYear(month, year)) {
       return res.status(400).json({
         message: "Invalid month or year",
       });
     }
 
-    const result = await pool.query(
-      `SELECT
-                 u.id AS user_id,
-                 u.name,
-                 u.email,
-                 e.id AS employee_id,
-                 COALESCE(SUM(a.working_hours), 0) AS total_working_hours,
-                 COALESCE(SUM(a.daily_pay), 0) AS total_earnings,
-                 COUNT(a.id)::INTEGER AS attendance_days
-             FROM employees e
-             JOIN users u ON u.id = e.user_id
-             LEFT JOIN attendance a
-                 ON a.employee_id = e.id
-                AND a.date >= make_date($1, $2, 1)
-                AND a.date < (make_date($1, $2, 1) + INTERVAL '1 month')
-             GROUP BY u.id, u.name, u.email, e.id
-             ORDER BY u.name ASC`,
-      [year, month]
+    // Every employee with a user account (employees with no attendance
+    // this month still appear with zeros, like the old LEFT JOIN).
+    const [employees, totalsByEmployee] = await Promise.all([
+      prisma.employees.findMany({
+        where: { users: { isNot: null } },
+        select: {
+          id: true,
+          users: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { users: { name: "asc" } },
+      }),
+      prisma.attendance.groupBy({
+        by: ["employee_id"],
+        where: { date: getMonthRange(year, month) },
+        _count: { _all: true },
+        _sum: { working_hours: true, daily_pay: true },
+      }),
+    ]);
+
+    const totalsMap = new Map(
+      totalsByEmployee.map((row) => [row.employee_id, row])
     );
 
-    const payroll = result.rows.map((employee) => ({
-      userId: employee.user_id,
-      name: employee.name,
-      email: employee.email,
-      totalWorkingHours: Number(employee.total_working_hours),
-      totalEarnings: Number(employee.total_earnings),
-      attendanceDays: employee.attendance_days,
-    }));
+    const payroll = employees.map((employee) => {
+      const totals = totalsMap.get(employee.id);
+
+      return {
+        userId: employee.users.id,
+        name: employee.users.name,
+        email: employee.users.email,
+        totalWorkingHours: toNumber(totals?._sum.working_hours),
+        totalEarnings: toNumber(totals?._sum.daily_pay),
+        attendanceDays: totals?._count._all ?? 0,
+      };
+    });
 
     return res.status(200).json({
       month,
@@ -437,7 +435,7 @@ export const getMonthlyPayrollByEmployee = async (req, res) => {
       ),
     });
   } catch (error) {
-    console.error("PostgreSQL getMonthlyPayrollByEmployee error:", error);
+    console.error("Prisma getMonthlyPayrollByEmployee error:", error);
 
     return res.status(500).json({
       message: "Failed to generate monthly payroll",

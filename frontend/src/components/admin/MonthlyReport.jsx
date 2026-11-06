@@ -161,7 +161,7 @@ export default function MonthlyReport({ employees = [] }) {
           <div className="rounded-xl bg-slate-50 p-5">
             <p className="text-sm text-slate-500">Attendance Days</p>
             <p className="mt-2 text-2xl font-bold text-slate-900">
-              {report.attendanceDays ?? report.totalDays ?? 0}
+              {report.totalWorkingDays ?? report.attendanceDays ?? report.totalDays ?? 0}
             </p>
           </div>
         </div>

@@ -1,148 +1,118 @@
-import pool from "../config/postgres.js"
+import prisma from "../config/prisma.js";
 
-//get all departments
+// Prisma error codes
+// P2002 -> unique constraint failed (duplicate name)
+// P2025 -> record to update/delete not found
 
-export const getDepartments = async (req , res) => {
+const isValidId = (id) => /^[1-9]\d*$/.test(id);
+
+// Converts Prisma's `_count` into the same `employee_count` field
+// the frontend already receives from the old SQL query.
+const withEmployeeCount = ({ _count, ...department }) => ({
+    ...department,
+    employee_count: _count.employees,
+});
+
+const validateDescription = (description) =>
+    description === undefined ||
+    description === null ||
+    typeof description === "string";
+
+const normalizeDescription = (description) =>
+    typeof description === "string" && description.trim()
+        ? description.trim()
+        : null;
+
+// get all departments
+
+export const getDepartments = async (req, res) => {
     try {
-        const result = await pool.query(
-            `
-            SELECT
-                d.id,
-                d.name,
-                d.description,
-                d.created_at,
-                COUNT(e.id)::INTEGER AS employee_count
-                FROM departments d
-                LEFT JOIN employees e
-                    ON e.department_id = d.id
-                GROUP BY d.id
-                ORDER BY d.name ASC
-            `
-        )
+        const departments = await prisma.departments.findMany({
+            orderBy: { name: "asc" },
+            include: { _count: { select: { employees: true } } },
+        });
 
+        const result = departments.map(withEmployeeCount);
 
         return res.status(200).json({
-            count: result.rows.length,
-            departments: result.rows,
-
-        })
+            count: result.length,
+            departments: result,
+        });
     } catch (error) {
-
-         console.error("Get departments error:", error);
+        console.error("Get departments error:", error);
 
         return res.status(500).json({
             message: "Failed to retrieve departments",
         });
-        
     }
-}
-
-
+};
 
 // get department by id
 
-
 export const getDepartmentById = async (req, res) => {
-
     try {
+        const { id } = req.params;
 
-          const { id } = req.params;
-
-
-
-        if (!/^[1-9]\d*$/.test(id)) {
+        if (!isValidId(id)) {
             return res.status(400).json({
                 message: "Invalid department ID",
             });
         }
 
+        const department = await prisma.departments.findUnique({
+            where: { id: Number(id) },
+            include: { _count: { select: { employees: true } } },
+        });
 
-        const result = await pool.query(
-            `SELECT
-                d.id,
-                d.name,
-                d.description,
-                d.created_at,
-                COUNT(e.id)::INTEGER AS employee_count
-             FROM departments d
-             LEFT JOIN employees e
-                ON e.department_id = d.id
-             WHERE d.id = $1
-             GROUP BY d.id`,
-            [Number(id)]
-        );
-
-
-        if (result.rows.length === 0) {
+        if (!department) {
             return res.status(404).json({
                 message: "Department not found",
             });
         }
 
-
         return res.status(200).json({
-            departments: result.rows[0]
-        })
-        
+            departments: withEmployeeCount(department),
+        });
     } catch (error) {
-
         console.error("Get department error:", error);
 
         return res.status(500).json({
             message: "Failed to retrieve department",
         });
-        
     }
-
-}
-
+};
 
 // create department
 
-export const createDepartment = async (req , res) => {
+export const createDepartment = async (req, res) => {
     try {
-        
-        const {name  , description } = req.body;
+        const { name, description } = req.body;
 
-        if(typeof name !== "string" || !name.trim()){
+        if (typeof name !== "string" || !name.trim()) {
             return res.status(400).json({
                 message: "Department name is required",
-            })
+            });
         }
 
-
-        if (
-            description !== undefined &&
-            description !== null &&
-            typeof description !== "string"
-        ) {
+        if (!validateDescription(description)) {
             return res.status(400).json({
                 message: "Description must be a string",
             });
         }
 
-
-        const normalizedName = name.trim()
-        const normalizedDescription = 
-        typeof description === "string" && description.trim() ? description.trim(): null
-
-        const result = await pool.query(
-             `INSERT INTO departments (name, description)
-             VALUES ($1, $2)
-             RETURNING id, name, description, created_at`,
-            [normalizedName, normalizedDescription]
-        )
-
-          return res.status(201).json({
-            message: "Department created successfully",
-            department: result.rows[0],
+        const department = await prisma.departments.create({
+            data: {
+                name: name.trim(),
+                description: normalizeDescription(description),
+            },
         });
 
-
-        
+        return res.status(201).json({
+            message: "Department created successfully",
+            department,
+        });
     } catch (error) {
-
-        if (error.code === "23505") {
+        if (error.code === "P2002") {
             return res.status(409).json({
                 message: "A department with this name already exists",
             });
@@ -153,20 +123,17 @@ export const createDepartment = async (req , res) => {
         return res.status(500).json({
             message: "Failed to create department",
         });
-        
     }
-}
-
+};
 
 // update department
 
 export const updateDepartment = async (req, res) => {
     try {
-        
         const { id } = req.params;
-        const { name , description} = req.body;
+        const { name, description } = req.body;
 
-        if (!/^[1-9]\d*$/.test(id)) {
+        if (!isValidId(id)) {
             return res.status(400).json({
                 message: "Invalid department ID",
             });
@@ -178,50 +145,32 @@ export const updateDepartment = async (req, res) => {
             });
         }
 
-         if (
-            description !== undefined &&
-            description !== null &&
-            typeof description !== "string"
-        ) {
+        if (!validateDescription(description)) {
             return res.status(400).json({
                 message: "Description must be a string",
             });
         }
 
+        const department = await prisma.departments.update({
+            where: { id: Number(id) },
+            data: {
+                name: name.trim(),
+                description: normalizeDescription(description),
+            },
+        });
 
-         const normalizedDescription =
-            typeof description === "string" && description.trim()
-                ? description.trim()
-                : null;
-
-         const result = await pool.query(
-            `UPDATE departments
-             SET name = $1,
-                 description = $2
-             WHERE id = $3
-             RETURNING id, name, description, created_at`,
-            [name.trim(), normalizedDescription, Number(id)]
-        );
-
-
-         if (result.rows.length === 0) {
+        return res.status(200).json({
+            message: "Department updated successfully",
+            department,
+        });
+    } catch (error) {
+        if (error.code === "P2025") {
             return res.status(404).json({
                 message: "Department not found",
             });
         }
 
-
-         return res.status(200).json({
-            message: "Department updated successfully",
-            department: result.rows[0],
-        });      
-
-
-
-
-    } catch (error) {
-
-         if (error.code === "23505") {
+        if (error.code === "P2002") {
             return res.status(409).json({
                 message: "A department with this name already exists",
             });
@@ -232,55 +181,42 @@ export const updateDepartment = async (req, res) => {
         return res.status(500).json({
             message: "Failed to update department",
         });
-
-        
     }
-}
-
-
-
+};
 
 // delete a department
 
-export const deleteDepartment = async (res , req) => {
+export const deleteDepartment = async (req, res) => {
     try {
-        const {id} = req.params
+        const { id } = req.params;
 
-        if (!/^[1-9]\d*$/.test(id)) {
+        if (!isValidId(id)) {
             return res.status(400).json({
                 message: "Invalid department ID",
             });
         }
 
+        const department = await prisma.departments.findUnique({
+            where: { id: Number(id) },
+            select: { id: true, name: true },
+        });
 
-        const result = await pool.query(
-            `DELETE FROM departments d
-             WHERE d.id = $1
-               AND NOT EXISTS (
-                   SELECT 1
-                   FROM employees e
-                   WHERE e.department_id = d.id
-               )
-             RETURNING d.id, d.name`,
-            [Number(id)]
-        );
+        if (!department) {
+            return res.status(404).json({
+                message: "Department not found",
+            });
+        }
 
+        // Deletes only when no employee is assigned, in a single query,
+        // so an employee assigned in between can't be silently unlinked.
+        const { count } = await prisma.departments.deleteMany({
+            where: {
+                id: Number(id),
+                employees: { none: {} },
+            },
+        });
 
-        if (result.rows.length === 0) {
-            const existing = await pool.query(
-                `SELECT id
-                 FROM departments
-                 WHERE id = $1`,
-                [Number(id)]
-            );
-
-
-            if (existing.rows.length === 0) {
-                return res.status(404).json({
-                    message: "Department not found",
-                });
-            }
-
+        if (count === 0) {
             return res.status(409).json({
                 message:
                     "Cannot delete a department that has employees assigned to it",
@@ -289,17 +225,13 @@ export const deleteDepartment = async (res , req) => {
 
         return res.status(200).json({
             message: "Department deleted successfully",
-            department: result.rows[0],
-        });       
-
-
+            department,
+        });
     } catch (error) {
-
-         console.error("Delete department error:", error);
+        console.error("Delete department error:", error);
 
         return res.status(500).json({
             message: "Failed to delete department",
         });
-        
     }
-}
+};

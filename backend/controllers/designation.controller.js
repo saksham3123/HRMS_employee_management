@@ -1,113 +1,93 @@
-import pool from "../config/postgres.js"
+import prisma from "../config/prisma.js";
 
+// Prisma error codes
+// P2002 -> unique constraint failed (duplicate title)
+// P2025 -> record to update/delete not found
+
+const isValidId = (id) => /^[1-9]\d*$/.test(id);
+
+// Converts Prisma's `_count` into the same `employee_count` field
+// the frontend already receives from the old SQL query.
+const withEmployeeCount = ({ _count, ...designation }) => ({
+  ...designation,
+  employee_count: _count.employees,
+});
 
 // get designations
-export const getDesignations = async (req, res)=>{
-    try {
-        const result = await pool.query(`
-      SELECT
-        d.id,
-        d.title,
-        d.description,
-        COUNT(e.id)::INTEGER AS employee_count
-      FROM designations d
-      LEFT JOIN employees e ON e.designation_id = d.id
-      GROUP BY d.id
-      ORDER BY d.title ASC
-    `)
-
-     return res.status(200).json({
-      count: result.rows.length,
-      designations: result.rows,
+export const getDesignations = async (req, res) => {
+  try {
+    const designations = await prisma.designations.findMany({
+      orderBy: { title: "asc" },
+      include: { _count: { select: { employees: true } } },
     });
 
+    const result = designations.map(withEmployeeCount);
 
-    } catch (error) {
-
-
+    return res.status(200).json({
+      count: result.length,
+      designations: result,
+    });
+  } catch (error) {
     console.error("Get designations error:", error);
     return res.status(500).json({
       message: "Failed to retrieve designations",
     });
-        
-    }
-}
+  }
+};
 
+// get designation by id
+export const getDesignationById = async (req, res) => {
+  const { id } = req.params;
 
-//  get api by id
-export const getDesignationById = async (req, res)=>{
-    const { id } = req.params
-
-    if (!/^[1-9]\d*$/.test(id)) {
+  if (!isValidId(id)) {
     return res.status(400).json({ message: "Invalid designation ID" });
   }
 
   try {
+    const designation = await prisma.designations.findUnique({
+      where: { id: Number(id) },
+      include: { _count: { select: { employees: true } } },
+    });
 
-     const result = await pool.query(
-      `SELECT
-         d.id,
-         d.title,
-         d.description,
-         COUNT(e.id)::INTEGER AS employee_count
-       FROM designations d
-       LEFT JOIN employees e ON e.designation_id = d.id
-       WHERE d.id = $1
-       GROUP BY d.id`,
-      [id]
-    );
-
-    if (result.rows.length === 0) {
+    if (!designation) {
       return res.status(404).json({ message: "Designation not found" });
     }
 
-    return res.status(200).json({ designation: result.rows[0] });
-
-    
+    return res.status(200).json({ designation: withEmployeeCount(designation) });
   } catch (error) {
-     console.error("Get designation error:", error);
+    console.error("Get designation error:", error);
     return res.status(500).json({
       message: "Failed to retrieve designation",
     });
-    
   }
+};
 
-}
-
-
-// create dsignation
-export const createDesignation =  async (req , res) => {
-    const { title , description } = req.body;
-
+// create designation
+export const createDesignation = async (req, res) => {
+  const { title, description } = req.body;
 
   if (typeof title !== "string" || !title.trim()) {
     return res.status(400).json({ message: "Designation title is required" });
   }
-
-
 
   if (description != null && typeof description !== "string") {
     return res.status(400).json({ message: "Description must be a string" });
   }
 
   try {
-
-     const result = await pool.query(
-      `INSERT INTO designations (title, description)
-       VALUES ($1, $2)
-       RETURNING id, title, description`,
-      [title.trim(), description?.trim() || null]
-    );
+    const designation = await prisma.designations.create({
+      data: {
+        title: title.trim(),
+        description: description?.trim() || null,
+      },
+    });
 
     return res.status(201).json({
       message: "Designation created successfully",
-      designation: result.rows[0],
+      designation,
     });
-    
-
   } catch (error) {
-
-    if (error.code === "23505") {
+    if (error.code === "P2002") {
       return res.status(409).json({
         message: "A designation with this title already exists",
       });
@@ -116,17 +96,14 @@ export const createDesignation =  async (req , res) => {
     console.error("Create designation error:", error);
     return res.status(500).json({ message: "Failed to create designation" });
   }
-    
-  }
+};
 
 // update designation
-
-export const updateDesignation= async (req , res) => {
-
-    const { id } = req.params;
+export const updateDesignation = async (req, res) => {
+  const { id } = req.params;
   const { title, description } = req.body;
 
-  if (!/^[1-9]\d*$/.test(id)) {
+  if (!isValidId(id)) {
     return res.status(400).json({ message: "Invalid designation ID" });
   }
 
@@ -138,32 +115,25 @@ export const updateDesignation= async (req , res) => {
     return res.status(400).json({ message: "Description must be a string" });
   }
 
-
   try {
+    const designation = await prisma.designations.update({
+      where: { id: Number(id) },
+      data: {
+        title: title.trim(),
+        description: description?.trim() || null,
+      },
+    });
 
-     const result = await pool.query(
-      `UPDATE designations
-       SET title = $1, description = $2
-       WHERE id = $3
-       RETURNING id, title, description `,
-      [title.trim(), description?.trim() || null, id]
-    );
-
-    if (result.rows.length === 0) {
+    return res.status(200).json({
+      message: "Designation updated successfully",
+      designation,
+    });
+  } catch (error) {
+    if (error.code === "P2025") {
       return res.status(404).json({ message: "Designation not found" });
     }
 
-     return res.status(200).json({
-      message: "Designation updated successfully",
-      designation: result.rows[0],
-    });
-
-
-    
-  } catch (error) {
-
-
-    if (error.code === "23505") {
+    if (error.code === "P2002") {
       return res.status(409).json({
         message: "A designation with this title already exists",
       });
@@ -171,68 +141,47 @@ export const updateDesignation= async (req , res) => {
 
     console.error("Update designation error:", error);
     return res.status(500).json({ message: "Failed to update designation" });
-    
   }
+};
 
-    
-}
+// delete designation
+export const deleteDesignation = async (req, res) => {
+  const { id } = req.params;
 
-
-//delete designation
-
-export const deleteDesignation = async (req , res)=>{
-     const {id} = req.params
-
-  if (!/^[1-9]\d*$/.test(id)) {
+  if (!isValidId(id)) {
     return res.status(400).json({ message: "Invalid designation ID" });
   }
 
   try {
-    
-    const result = await pool.query(
-        `DELETE FROM designations d
-       WHERE d.id = $1
-         AND NOT EXISTS (
-           SELECT 1 FROM employees e
-           WHERE e.designation_id = d.id
-         )
-       RETURNING d.id, d.title`,
-      [id]
-    )
+    const designation = await prisma.designations.findUnique({
+      where: { id: Number(id) },
+      select: { id: true, title: true },
+    });
 
-     if (result.rows.length === 0) {
-      const existing = await pool.query(
-        "SELECT id FROM designations WHERE id = $1",
-        [id]
-      );
+    if (!designation) {
+      return res.status(404).json({ message: "Designation not found" });
+    }
 
-      if (existing.rows.length === 0) {
-        return res.status(404).json({ message: "Designation not found" });
-      }
+    // Deletes only when no employee holds this designation, in a single query.
+    const { count } = await prisma.designations.deleteMany({
+      where: {
+        id: Number(id),
+        employees: { none: {} },
+      },
+    });
 
+    if (count === 0) {
       return res.status(409).json({
         message: "Cannot delete a designation assigned to employees",
       });
     }
 
-
-     return res.status(200).json({
+    return res.status(200).json({
       message: "Designation deleted successfully",
-      designation: result.rows[0],
+      designation,
     });
-
-
-   
-
-
   } catch (error) {
-
-
     console.error("Delete designation error:", error);
     return res.status(500).json({ message: "Failed to delete designation" });
-
-    
   }
-
-
-}
+};

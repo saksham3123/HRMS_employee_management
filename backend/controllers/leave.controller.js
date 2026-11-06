@@ -1,16 +1,52 @@
-import pool from "../config/postgres.js"
+import prisma from "../config/prisma.js";
+
+// Accepts only real calendar dates in YYYY-MM-DD format
+// (rejects values like 2026-02-31 instead of letting the database error out).
+const toDateOnly = (value) => {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return null;
+    }
+
+    const date = new Date(`${value}T00:00:00.000Z`);
+
+    if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+        return null;
+    }
+
+    return date;
+};
+
+// Shared shape for leave request lists, matching the old SQL column aliases.
+const leaveRequestListSelect = {
+    id: true,
+    employee_id: true,
+    start_date: true,
+    end_date: true,
+    reason: true,
+    status: true,
+    review_comment: true,
+    reviewed_at: true,
+    created_at: true,
+    leave_types: { select: { name: true } },
+    users: { select: { name: true } }, // reviewer (leave_requests.reviewed_by)
+};
+
+const flattenLeaveRequest = ({ leave_types, users, ...request }) => ({
+    ...request,
+    leave_type: leave_types.name,
+    reviewed_by_name: users?.name ?? null,
+});
 
 export const getLeaveTypes = async (_req, res) => {
     try {
-        const result = await pool.query(
-            `SELECT id, name
-             FROM leave_types
-             WHERE is_active = TRUE
-             ORDER BY name`
-        );
+        const leaveTypes = await prisma.leave_types.findMany({
+            where: { is_active: true },
+            select: { id: true, name: true },
+            orderBy: { name: "asc" },
+        });
 
         return res.status(200).json({
-            leaveTypes: result.rows,
+            leaveTypes,
         });
     } catch (error) {
         console.error("Get leave types error:", error);
@@ -24,229 +60,173 @@ export const getLeaveTypes = async (_req, res) => {
 // submit a leave request
 
 export const createLeaveRequest = async (req, res) => {
-
     try {
-
-        const userId = req.user.userId
-        const { leaveTypeId, startDate, endDate, reason } = req.body
+        const userId = req.user.userId;
+        const { leaveTypeId, startDate, endDate, reason } = req.body;
 
         if (
-            !Number.isInteger(leaveTypeId) || typeof startDate !== "string" ||
+            !Number.isInteger(leaveTypeId) ||
+            typeof startDate !== "string" ||
             typeof endDate !== "string" ||
             typeof reason !== "string" ||
             !reason.trim()
-
         ) {
             return res.status(400).json({
                 message: "Leave type , dates and reason are required",
-            })
-
+            });
         }
 
-        //resolve the logged-in user to their employee record
-        const employeeResult = await pool.query(
-            `SELECT id
-             FROM employees
-             WHERE user_id = $1`,
-            [userId]
+        // resolve the logged-in user to their employee record
+        const employee = await prisma.employees.findUnique({
+            where: { user_id: userId },
+            select: { id: true },
+        });
 
-        )
-
-
-
-        if (employeeResult.rows.length === 0) {
+        if (!employee) {
             return res.status(404).json({
                 message: "Employee record not found",
             });
         }
 
-
-        const employeeId = employeeResult.rows[0].id
+        const employeeId = employee.id;
 
         // Validate date format and range.
-        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+        const start = toDateOnly(startDate);
+        const end = toDateOnly(endDate);
 
-        if (
-            !datePattern.test(startDate) ||
-            !datePattern.test(endDate) ||
-            startDate > endDate
-        ) {
+        if (!start || !end || start > end) {
             return res.status(400).json({
                 message: "Please provide valid dates in YYYY-MM-DD format",
             });
         }
 
-
         // Confirm that the leave type exists and is active.
-        const leaveTypeResult = await pool.query(
-            `SELECT id
-             FROM leave_types
-             WHERE id = $1 AND is_active = TRUE`,
-            [leaveTypeId]
-        );
+        const leaveType = await prisma.leave_types.findFirst({
+            where: { id: leaveTypeId, is_active: true },
+            select: { id: true },
+        });
 
-        if (leaveTypeResult.rows.length === 0) {
+        if (!leaveType) {
             return res.status(400).json({
                 message: "Invalid or inactive leave type",
             });
         }
 
-        //overlap leave request 
-
         // Prevent overlapping pending or approved leave requests.
-        const overlapResult = await pool.query(
-            `SELECT 1
-             FROM leave_requests
-             WHERE employee_id = $1
-               AND status IN ('pending', 'approved')
-               AND start_date <= $3::date
-               AND end_date >= $2::date
-             LIMIT 1`,
-            [employeeId, startDate, endDate]
-        );
+        const overlap = await prisma.leave_requests.findFirst({
+            where: {
+                employee_id: employeeId,
+                status: { in: ["pending", "approved"] },
+                start_date: { lte: end },
+                end_date: { gte: start },
+            },
+            select: { id: true },
+        });
 
-
-        if (overlapResult.rows.length > 0) {
+        if (overlap) {
             return res.status(409).json({
                 message: "You already have a pending or approved request for overlapping dates",
             });
         }
 
-
-        const result = await pool.query(
-            `INSERT INTO leave_requests
-                (employee_id, leave_type_id, start_date, end_date, reason)
-             VALUES ($1, $2, $3::date, $4::date, $5)
-             RETURNING *`,
-            [
-                employeeId,
-                leaveTypeId,
-                startDate,
-                endDate,
-                reason.trim(),
-            ]
-        );
-
+        const leaveRequest = await prisma.leave_requests.create({
+            data: {
+                employee_id: employeeId,
+                leave_type_id: leaveTypeId,
+                start_date: start,
+                end_date: end,
+                reason: reason.trim(),
+            },
+        });
 
         return res.status(201).json({
             message: "Leave request submitted successfully",
-            leaveRequest: result.rows[0],
+            leaveRequest,
         });
-
     } catch (error) {
-
-
         console.error("Create leave request error:", error);
 
         return res.status(500).json({
             message: "Failed to submit leave request",
         });
-
     }
-
-}
-
+};
 
 // Get the logged-in employee's leave requests
 export const getMyLeaveRequests = async (req, res) => {
-
     try {
+        const requests = await prisma.leave_requests.findMany({
+            where: { employees: { user_id: req.user.userId } },
+            select: leaveRequestListSelect,
+            orderBy: { created_at: "desc" },
+        });
 
-        
-        const result = await pool.query(
-            `SELECT
-                lr.id,
-                lr.start_date,
-                lr.end_date,
-                lr.reason,
-                lr.status,
-                lr.review_comment,
-                lr.reviewed_at,
-                lr.created_at,
-                lt.name AS leave_type,
-                reviewer.name AS reviewed_by_name
-             FROM leave_requests lr
-             JOIN employees e ON e.id = lr.employee_id
-             JOIN leave_types lt ON lt.id = lr.leave_type_id
-             LEFT JOIN users reviewer ON reviewer.id = lr.reviewed_by
-             WHERE e.user_id = $1
-             ORDER BY lr.created_at DESC`,
-            [req.user.userId]
+        // The old query did not return employee_id for this endpoint.
+        const leaveRequests = requests.map(({ employee_id, ...request }) =>
+            flattenLeaveRequest(request)
         );
 
         return res.status(200).json({
-            leaveRequests: result.rows,
+            leaveRequests,
         });
-        
     } catch (error) {
-
         console.error("Get my leave requests error:", error);
 
         return res.status(500).json({
             message: "Failed to retrieve leave requests",
         });
-        
     }
-}
+};
 
-
-
-
-export const getAllLeaveRequests = async (req , res) => {
-
+export const getAllLeaveRequests = async (req, res) => {
     try {
+        const requests = await prisma.leave_requests.findMany({
+            // Same as the old INNER JOIN users: skip employees without a user account.
+            where: { employees: { users: { isNot: null } } },
+            select: {
+                ...leaveRequestListSelect,
+                employees: {
+                    select: { users: { select: { name: true, email: true } } },
+                },
+            },
+            orderBy: { created_at: "desc" },
+        });
 
-        const result = await pool.query(
-            `SELECT
-                lr.id,
-                lr.employee_id,
-                u.name AS employee_name,
-                u.email AS employee_email,
-                lr.start_date,
-                lr.end_date,
-                lr.reason,
-                lr.status,
-                lr.review_comment,
-                lr.reviewed_at,
-                lr.created_at,
-                lt.name AS leave_type,
-                reviewer.name AS reviewed_by_name
-             FROM leave_requests lr
-             JOIN employees e ON e.id = lr.employee_id
-             JOIN users u ON u.id = e.user_id
-             JOIN leave_types lt ON lt.id = lr.leave_type_id
-             LEFT JOIN users reviewer ON reviewer.id = lr.reviewed_by
-             ORDER BY
-                CASE WHEN lr.status = 'pending' THEN 0 ELSE 1 END,
-                lr.created_at DESC`
-        );
+        const leaveRequests = requests
+            .map(({ employees, ...request }) => ({
+                ...flattenLeaveRequest(request),
+                employee_name: employees.users.name,
+                employee_email: employees.users.email,
+            }))
+            // Pending first, newest first within each group
+            // (Prisma has no CASE in orderBy; Array.sort is stable).
+            .sort(
+                (a, b) =>
+                    (a.status === "pending" ? 0 : 1) -
+                    (b.status === "pending" ? 0 : 1)
+            );
 
         return res.status(200).json({
-            leaveRequests: result.rows,
+            leaveRequests,
         });
-        
     } catch (error) {
-
         console.error("Get all leave requests error:", error);
 
         return res.status(500).json({
             message: "Failed to retrieve leave requests",
         });
-        
     }
-    
-}
+};
 
 export const reviewLeaveRequest = async (req, res) => {
     const { id } = req.params;
     const { status, reviewComment = "" } = req.body;
 
-      if (!Number.isInteger(Number(id)) || Number(id) <= 0) {
+    if (!Number.isInteger(Number(id)) || Number(id) <= 0) {
         return res.status(400).json({
             message: "Invalid leave request ID",
         });
     }
-
 
     if (!["approved", "rejected", "cancelled"].includes(status)) {
         return res.status(400).json({
@@ -254,47 +234,39 @@ export const reviewLeaveRequest = async (req, res) => {
         });
     }
 
-    if (
-        typeof reviewComment !== "string" ||
-        reviewComment.length > 1000
-    ) {
+    if (typeof reviewComment !== "string" || reviewComment.length > 1000) {
         return res.status(400).json({
             message: "Review comment must be a string of at most 1000 characters",
         });
     }
 
-
     try {
+        // Only pending requests can be reviewed; approved ones can still be cancelled.
+        const allowedCurrentStatuses =
+            status === "cancelled" ? ["pending", "approved"] : ["pending"];
 
-         const result = await pool.query(
-            `UPDATE leave_requests
-             SET status = $1,
-                 reviewed_by = $2,
-                 reviewed_at = CURRENT_TIMESTAMP,
-                 review_comment = $3,
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE id = $4
-               AND (
-                    status = 'pending'
-                    OR ($1 = 'cancelled' AND status = 'approved')
-               )
-             RETURNING *`,
-            [
+        // Conditional update in one query, so two reviewers can't both succeed.
+        const [leaveRequest] = await prisma.leave_requests.updateManyAndReturn({
+            where: {
+                id: Number(id),
+                status: { in: allowedCurrentStatuses },
+            },
+            data: {
                 status,
-                req.user.userId,
-                reviewComment.trim() || null,
-                Number(id),
-            ]
-        );
+                reviewed_by: req.user.userId,
+                reviewed_at: new Date(),
+                review_comment: reviewComment.trim() || null,
+                updated_at: new Date(),
+            },
+        });
 
+        if (!leaveRequest) {
+            const existing = await prisma.leave_requests.findUnique({
+                where: { id: Number(id) },
+                select: { id: true, status: true },
+            });
 
-         if (result.rows.length === 0) {
-            const existing = await pool.query(
-                "SELECT id, status FROM leave_requests WHERE id = $1",
-                [Number(id)]
-            );
-
-            if (existing.rows.length === 0) {
+            if (!existing) {
                 return res.status(404).json({
                     message: "Leave request not found",
                 });
@@ -302,26 +274,19 @@ export const reviewLeaveRequest = async (req, res) => {
 
             return res.status(409).json({
                 message: "This leave request has already been reviewed",
-                currentStatus: existing.rows[0].status,
+                currentStatus: existing.status,
             });
         }
 
         return res.status(200).json({
             message: `Leave request ${status} successfully`,
-            leaveRequest: result.rows[0],
+            leaveRequest,
         });
-
-
-        
     } catch (error) {
-
         console.error("Review leave request error:", error);
 
         return res.status(500).json({
             message: "Failed to review leave request",
         });
-        
     }
-
-
-}
+};
