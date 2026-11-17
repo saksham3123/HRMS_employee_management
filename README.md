@@ -44,7 +44,7 @@ It is built with **React, Node.js, Express and PostgreSQL**, and follows a REST 
 | Tables | DataTables (`datatables.net-react`) |
 | Backend | Node.js, Express 5 |
 | Database | PostgreSQL |
-| Data access | node-postgres (`pg`), Prisma ORM 7 (being integrated alongside `pg`) |
+| Data access | Prisma ORM 7 with the `@prisma/adapter-pg` PostgreSQL driver |
 | Authentication | JWT, bcrypt |
 | API communication | REST, Fetch API |
 | Tools | Git, Postman, VS Code |
@@ -67,9 +67,9 @@ Express API ── auth middleware ── permission middleware
 ## Project Structure
 
 ```text
-user_portal/
+HRMS_employee_management/
 ├── backend/
-│   ├── config/          # PostgreSQL pool and Prisma client
+│   ├── config/          # Prisma client
 │   ├── controllers/     # users, attendance, leave, departments, designations, reporting
 │   ├── database/        # schema.sql (tables, roles, permissions, seed data)
 │   ├── helpers/         # reporting-hierarchy cycle check (recursive CTE)
@@ -100,8 +100,8 @@ user_portal/
 ### 1. Clone the repository
 
 ```bash
-git clone YOUR_REPOSITORY_URL
-cd user_portal
+git clone https://github.com/saksham3123/HRMS_employee_management.git
+cd HRMS_employee_management
 ```
 
 ### 2. Set up the backend
@@ -115,18 +115,14 @@ Create `backend/.env`:
 
 ```env
 PORT=3000
-JWT_SECRET=your_secret_key
+JWT_SECRET=your_long_random_secret
 FRONTEND_URL=http://localhost:5173
-
-# PostgreSQL connection used by the pg pool
-PGHOST=localhost
-PGPORT=5432
-PGDATABASE=hrms_db
-PGUSER=postgres
-PGPASSWORD=your_password
 
 # PostgreSQL connection used by Prisma
 DATABASE_URL=postgresql://postgres:your_password@localhost:5432/hrms_db?schema=public
+
+# Hourly pay rate saved on each attendance record at clock-in
+HOURLY_RATE=100
 
 # First admin account created by scripts/seedAdmin.js
 ADMIN_EMAIL=admin@example.com
@@ -176,7 +172,7 @@ Open the URL Vite prints (usually `http://localhost:5173`) and sign in with the 
 |---|---|
 | `/api/users` | Login, profile, user and employee management |
 | `/api/admin` | Admin employee, attendance, payroll and manager assignment |
-| `/api/attendance` | Clock-in/out, history, monthly reports |
+| `/api/attendance` | Clock in/out, today's record, own history |
 | `/api/leave` | Leave types, requests and reviews |
 | `/api/departments` | Department CRUD |
 | `/api/designations` | Designation CRUD |
@@ -200,15 +196,17 @@ All routes except login require a `Bearer` token.
 - Permission checks on the backend for every sensitive action.
 - Parameterized SQL and Prisma queries to prevent SQL injection.
 - Secrets kept in environment variables.
+- Account status checked on every request, so deactivated users are blocked immediately.
 
 ## Roadmap
 
+- Multi-tenant SaaS: organizations, company signup and per-company data isolation.
 - Two-level leave approval (HR, then Manager).
 - Manager view of team projects and leave requests.
 - Team announcements for managers.
 - SMTP email notifications and HTML email signatures.
-- Complete migration of controllers to Prisma.
 - End-to-end testing and production deployment.
+
 
 ## Author
 
