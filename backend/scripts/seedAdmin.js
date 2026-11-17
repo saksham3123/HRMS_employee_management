@@ -1,9 +1,6 @@
-import pool from "../config/postgres.js";
+import "dotenv/config";
 import bcrypt from "bcrypt"
-import dotenv from 'dotenv'
-
-
-dotenv.config();
+import prisma from "../config/prisma.js";
 
 
 const createAdmin = async () => {
@@ -14,80 +11,54 @@ const createAdmin = async () => {
         if (!email || !password) {
             throw new Error("ADMIN_EMAIL and ADMIN_PASSWORD must be set in .env");
         }
-        //Check weather this admin account already exists
-        const existingAdmin = await pool.query(
-            `SELECT id FROM users WHERE LOWER(email) = LOWER($1)`,
-            [email]
-        );
 
-        if (existingAdmin.rows.length > 0) {
-            console.log("Admin account already exists"
-            )
+        // Check whether this admin account already exists (case-insensitive).
+        const existingAdmin = await prisma.users.findFirst({
+            where: { email: { equals: email, mode: "insensitive" } },
+            select: { id: true },
+        });
+
+        if (existingAdmin) {
+            console.log("Admin account already exists");
             return;
-
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const client = await pool.connect();
+        // User and role are created together, or not at all.
+        const user = await prisma.$transaction(async (tx) => {
+            const adminRole = await tx.roles.findUnique({
+                where: { name: "admin" },
+                select: { id: true },
+            });
 
-
-        try {
-            await client.query("BEGIN");
-
-            const userResult = await client.query(
-                `INSERT INTO users (name, email, password)
-         VALUES ($1, $2, $3)
-         RETURNING id, name, email`,
-                ["Admin", email, hashedPassword]
-
-            )
-
-            const adminRole = await client.query(
-                `SELECT id FROM roles WHERE name = $1`,
-                ["admin"]
-            );
-
-            if (adminRole.rows.length === 0) {
+            if (!adminRole) {
                 throw new Error("Admin role not found. Check your seeded roles.");
             }
 
-            await client.query(
-                `INSERT INTO user_roles (user_id, role_id)
-         VALUES ($1, $2)`,
-                [userResult.rows[0].id, adminRole.rows[0].id]
+            const createdUser = await tx.users.create({
+                data: { name: "Admin", email, password: hashedPassword },
+                select: { id: true, name: true, email: true },
+            });
 
-            )
+            await tx.user_roles.create({
+                data: { user_id: createdUser.id, role_id: adminRole.id },
+            });
 
-            await client.query("COMMIT");
+            return createdUser;
+        });
 
-
-            console.log("Admin account created successfully.");
-            console.log("Email:", userResult.rows[0].email);
-            console.log("User ID:", userResult.rows[0].id);
-
-
-
-        } catch (error) {
-
-            await client.query("ROLLBACK")
-            throw error;
-
-        } finally {
-            client.release()
-
-        }
-
-
+        console.log("Admin account created successfully.");
+        console.log("Email:", user.email);
+        console.log("User ID:", user.id);
 
     } catch (error) {
 
         console.error("Admin creation failed:", error.message)
         process.exitCode = 1;
 
-
     } finally {
-        await pool.end();
+        await prisma.$disconnect();
     }
 }
 

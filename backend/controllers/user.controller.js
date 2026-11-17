@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
-import pool from "../config/postgres.js";
+import prisma from "../config/prisma.js";
 
 export const loginUser = async (req, res) => {
 
@@ -14,40 +14,32 @@ export const loginUser = async (req, res) => {
             })
         }
 
-        
-const result = await pool.query(
-    `SELECT
-        u.id,
-        u.name,
-        u.email,
-        u.password,
-        u.is_active,
-        (
-            SELECT r.name
-            FROM user_roles ur
-            JOIN roles r ON r.id = ur.role_id
-            WHERE ur.user_id = u.id
-            ORDER BY r.id
-            LIMIT 1
-        ) AS role,
-        COALESCE(
-            (
-                SELECT json_agg(DISTINCT p.permission_key)
-                FROM user_roles ur
-                JOIN role_permissions rp ON rp.role_id = ur.role_id
-                JOIN permissions p ON p.id = rp.permission_id
-                WHERE ur.user_id = u.id
-            ),
-            '[]'::json
-        ) AS permissions
-    FROM users u
-    WHERE LOWER(u.email) = LOWER($1)
-    LIMIT 1`,
-    [email.trim()]
-);
-
-const user = result.rows[0];
-
+        // Case-insensitive email match (old: LOWER(email) = LOWER($1)).
+        const user = await prisma.users.findFirst({
+            where: { email: { equals: email.trim(), mode: "insensitive" } },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                password: true,
+                is_active: true,
+                user_roles: {
+                    select: {
+                        roles: {
+                            select: {
+                                id: true,
+                                name: true,
+                                role_permissions: {
+                                    select: {
+                                        permissions: { select: { permission_key: true } },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
 
         if (!user) {
             return res.status(401).json({
@@ -75,36 +67,50 @@ const user = result.rows[0];
             })
         }
 
+        // Role = the user's role with the lowest roles.id (old: ORDER BY r.id LIMIT 1).
+        const roles = user.user_roles
+            .map((userRole) => userRole.roles)
+            .sort((a, b) => a.id - b.id);
+
+        const role = roles[0]?.name ?? null;
+
+        // Unique, sorted permission keys from all the user's roles
+        // (old: json_agg(DISTINCT p.permission_key)).
+        const permissions = [
+            ...new Set(
+                roles.flatMap((r) =>
+                    r.role_permissions.map((rp) => rp.permissions.permission_key)
+                )
+            ),
+        ].sort();
+
         // generate JWT
 
         const token = jwt.sign(
             {
                 userId: user.id,
-                role: user.role,
+                role,
             },
             process.env.JWT_SECRET,
             { expiresIn: "7d" }
 
         )
 
-      
-res.status(200).json({
-    message: "Login Successful",
-    token,
-    user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        permissions: user.permissions,
-    },
-});
 
-
-
+        res.status(200).json({
+            message: "Login Successful",
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role,
+                permissions,
+            },
+        });
 
     } catch (error) {
-        console.error("PostgreSQL login error:", error);
+        console.error("Prisma login error:", error);
 
         return res.status(500).json({
             message: "Login failed due to a server error",
@@ -114,10 +120,13 @@ res.status(200).json({
 
 }
 
-export const registerUser = async (req, res) => {
-    let client;
-    let transactionStarted = false;
+// "Today" according to PostgreSQL (CURRENT_DATE), as a UTC-midnight Date.
+const getDbToday = async (db) => {
+    const [{ today }] = await db.$queryRaw`SELECT CURRENT_DATE::text AS today`;
+    return new Date(`${today}T00:00:00.000Z`);
+};
 
+export const registerUser = async (req, res) => {
     try {
         const { name, email, phone, password, role = "employee" } = req.body;
         const validRoles = ["admin", "hr", "manager", "employee"];
@@ -141,142 +150,119 @@ export const registerUser = async (req, res) => {
         const normalizedEmail = email.trim().toLowerCase();
         const normalizedPhone = phone.trim();
 
-        client = await pool.connect();
-        await client.query("BEGIN");
-        transactionStarted = true;
-
-        const existingUser = await client.query(
-            "SELECT id FROM users WHERE LOWER(email) = $1",
-            [normalizedEmail]
-        );
-
-        if (existingUser.rows.length > 0) {
-            await client.query("ROLLBACK");
-            transactionStarted = false;
-            return res.status(409).json({
-                message: "User already exists",
-            });
-        }
-
+        // Hash before the transaction so the transaction stays short.
         const hashedPassword = await bcrypt.hash(password, 10);
-        const userResult = await client.query(
-            `INSERT INTO users (name, email, password)
-             VALUES ($1, $2, $3)
-             RETURNING id, name, email`,
-            [normalizedName, normalizedEmail, hashedPassword]
-        );
-        const user = userResult.rows[0];
-        const employeeNumber = `EMP-${String(user.id).padStart(4, "0")}`;
 
-        await client.query(
-            `INSERT INTO employees (user_id, employee_number, phone, joining_date)
-             VALUES ($1, $2, $3, CURRENT_DATE)`,
-            [user.id, employeeNumber, normalizedPhone]
-        );
+        // Everything below runs in one transaction: if any step fails,
+        // no user, employee or role row is left behind.
+        const result = await prisma.$transaction(async (tx) => {
+            const existingUser = await tx.users.findFirst({
+                where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+                select: { id: true },
+            });
 
-        const roleResult = await client.query(
-            "SELECT id FROM roles WHERE name = $1",
-            [role]
-        );
-
-        if (roleResult.rows.length === 0) {
-            throw new Error(`Role "${role}" does not exist in the roles table`);
-        }
-
-        await client.query(
-            `INSERT INTO user_roles (user_id, role_id)
-             VALUES ($1, $2)`,
-            [user.id, roleResult.rows[0].id]
-        );
-
-        await client.query("COMMIT");
-        transactionStarted = false;
-
-        return res.status(201).json({
-            message: "User registered successfully",
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                role,
-            },
-        });
-    }  catch (error) {
-        if (client && transactionStarted) {
-            try {
-                await client.query("ROLLBACK");
-            } catch (rollbackError) {
-                console.error("Registration rollback error:", rollbackError);
+            if (existingUser) {
+                return { status: 409, body: { message: "User already exists" } };
             }
-        }
 
-        if (error.code === "23505") {
+            const user = await tx.users.create({
+                data: {
+                    name: normalizedName,
+                    email: normalizedEmail,
+                    password: hashedPassword,
+                },
+                select: { id: true, name: true, email: true },
+            });
+
+            const employeeNumber = `EMP-${String(user.id).padStart(4, "0")}`;
+
+            await tx.employees.create({
+                data: {
+                    user_id: user.id,
+                    employee_number: employeeNumber,
+                    phone: normalizedPhone,
+                    joining_date: await getDbToday(tx),
+                },
+            });
+
+            const roleRecord = await tx.roles.findUnique({
+                where: { name: role },
+                select: { id: true },
+            });
+
+            if (!roleRecord) {
+                throw new Error(`Role "${role}" does not exist in the roles table`);
+            }
+
+            await tx.user_roles.create({
+                data: { user_id: user.id, role_id: roleRecord.id },
+            });
+
+            return {
+                status: 201,
+                body: {
+                    message: "User registered successfully",
+                    user: {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        role,
+                    },
+                },
+            };
+        });
+
+        return res.status(result.status).json(result.body);
+    } catch (error) {
+        if (error.code === "P2002") {
             return res.status(409).json({
                 message: "Email or employee number is already in use",
             });
         }
 
-        console.error("PostgreSQL registerUser error:", error);
+        console.error("Prisma registerUser error:", error);
 
         return res.status(500).json({
             message: "Failed to register user",
         });
-    } finally {
-        if (client) {
-            client.release();
-        }
     }
 };
-
-
-
 
 
 
 export const getProfile = async (req, res) => {
     try {
 
-        const result = await pool.query(
-            `SELECT
-            u.id,
-            u.name,
-            u.email,
-            u.is_active,
-            r.name AS role,
-            e.id AS employee_id,
-            e.employee_number,
-            e.phone,
-            e.joining_date,
-            e.employment_status,
-            d.name AS department_name,
-            ds.title AS designation_title,
-            manager_user.name AS reporting_manager_name,
-            manager_user.email AS reporting_manager_email
-            FROM users u
-            LEFT JOIN LATERAL (
-                SELECT r.name
-                FROM user_roles ur
-                JOIN roles r ON r.id = ur.role_id
-                WHERE ur.user_id = u.id
-                ORDER BY r.name
-                LIMIT 1
-            ) r ON TRUE
-            LEFT JOIN employees e ON e.user_id = u.id
-            LEFT JOIN departments d ON d.id = e.department_id
-            LEFT JOIN designations ds ON ds.id = e.designation_id
-            LEFT JOIN employee_reporting er
-                ON er.employee_id = e.id
-               AND er.effective_to IS NULL
-            LEFT JOIN employees manager ON manager.id = er.manager_employee_id
-            LEFT JOIN users manager_user ON manager_user.id = manager.user_id
-            WHERE u.id = $1
-            LIMIT 1`,
-            [req.user.userId]
-        )
-
-        const user = result.rows[0]
-
-
+        const user = await prisma.users.findUnique({
+            where: { id: req.user.userId },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                is_active: true,
+                user_roles: { select: { roles: { select: { name: true } } } },
+                employees: {
+                    select: {
+                        id: true,
+                        employee_number: true,
+                        phone: true,
+                        joining_date: true,
+                        employment_status: true,
+                        departments: { select: { name: true } },
+                        designations: { select: { title: true } },
+                        reporting_lines: {
+                            where: { effective_to: null },
+                            take: 1,
+                            select: {
+                                manager: {
+                                    select: { users: { select: { name: true, email: true } } },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
 
         if (!user) {
             return res.status(404).json({
@@ -286,14 +272,37 @@ export const getProfile = async (req, res) => {
 
         }
 
+        const employee = user.employees;
+        const managerUser = employee?.reporting_lines[0]?.manager?.users ?? null;
+
+        // Alphabetically first role (old: ORDER BY r.name LIMIT 1).
+        const role =
+            user.user_roles.map((userRole) => userRole.roles.name).sort()[0] ?? null;
+
+        // Same flat shape as the old LEFT JOIN query.
         res.status(200).json({
             message: "User found",
-            user,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                is_active: user.is_active,
+                role,
+                employee_id: employee?.id ?? null,
+                employee_number: employee?.employee_number ?? null,
+                phone: employee?.phone ?? null,
+                joining_date: employee?.joining_date ?? null,
+                employment_status: employee?.employment_status ?? null,
+                department_name: employee?.departments?.name ?? null,
+                designation_title: employee?.designations?.title ?? null,
+                reporting_manager_name: managerUser?.name ?? null,
+                reporting_manager_email: managerUser?.email ?? null,
+            },
         })
 
     } catch (error) {
 
-        console.error("PostgreSQL getProfile error:", error);
+        console.error("Prisma getProfile error:", error);
 
         return res.status(500).json({
             message: "Failed to retrieve user profile"
@@ -301,8 +310,6 @@ export const getProfile = async (req, res) => {
 
     }
 }
-
-
 
 export const updateProfile = async (req, res) => {
     try {
@@ -329,32 +336,16 @@ export const updateProfile = async (req, res) => {
             });
         }
 
+        // Only the fields that were sent (old: COALESCE($1, name)).
+        const data = { updated_at: new Date() };
+        if (name !== undefined) data.name = name.trim();
+        if (email !== undefined) data.email = email.trim();
 
-        const result = await pool.query(
-            `UPDATE users
-             SET
-                 name = COALESCE($1, name),
-                 email = COALESCE($2, email),
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE id = $3
-             RETURNING id, name, email`,
-            [
-                name === undefined ? null : name.trim(),
-                email === undefined ? null : email.trim(),
-                userId,
-            ]
-        );
-
-        const user = result.rows[0];
-
-
-        if (!user) {
-            return res.status(404).json({
-                message: "User not found",
-            });
-        }
-
-
+        const user = await prisma.users.update({
+            where: { id: userId },
+            data,
+            select: { id: true, name: true, email: true },
+        });
 
         res.status(200).json({
             message: "user profile updated",
@@ -369,13 +360,19 @@ export const updateProfile = async (req, res) => {
 
     } catch (error) {
 
-        if (error.code === "23505") {
+        if (error.code === "P2025") {
+            return res.status(404).json({
+                message: "User not found",
+            });
+        }
+
+        if (error.code === "P2002") {
             return res.status(409).json({
                 message: "Email is already in use",
             });
         }
 
-        console.error("PostgreSQL updateProfile error:", error);
+        console.error("Prisma updateProfile error:", error);
 
 
         res.status(500).json({
@@ -389,59 +386,65 @@ export const updateProfile = async (req, res) => {
 
 export const getAllUsers = async (req, res) => {
     try {
-         const result = await pool.query(
-    `SELECT
-        u.id,
-        u.name,
-        u.email,
-        u.is_active,
-        u.created_at,
-        COALESCE(
-            ARRAY_AGG(DISTINCT r.name)
-            FILTER (WHERE r.name IS NOT NULL),
-            ARRAY[]::TEXT[]
-        ) AS roles,
-        e.id AS employee_id,
-        e.employee_number,
-        e.phone,
-        e.department_id,
-        d.name AS department_name,
-        e.designation_id,
-        ds.title AS designation_title,
-        e.joining_date,
-        e.employment_status
-     FROM users u
-     LEFT JOIN user_roles ur ON ur.user_id = u.id
-     LEFT JOIN roles r ON r.id = ur.role_id
-     LEFT JOIN employees e ON e.user_id = u.id
-     LEFT JOIN departments d ON d.id = e.department_id
-     LEFT JOIN designations ds ON ds.id = e.designation_id
-     GROUP BY
-        u.id,
-        u.name,
-        u.email,
-        u.is_active,
-        u.created_at,
-        e.id,
-        e.employee_number,
-        e.phone,
-        e.department_id,
-        d.name,
-        e.designation_id,
-        ds.title,
-        e.joining_date,
-        e.employment_status
-     ORDER BY u.created_at DESC`
-);
+        const records = await prisma.users.findMany({
+            orderBy: { created_at: "desc" },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                is_active: true,
+                created_at: true,
+                user_roles: { select: { roles: { select: { name: true } } } },
+                employees: {
+                    select: {
+                        id: true,
+                        employee_number: true,
+                        phone: true,
+                        department_id: true,
+                        designation_id: true,
+                        joining_date: true,
+                        employment_status: true,
+                        departments: { select: { name: true } },
+                        designations: { select: { title: true } },
+                    },
+                },
+            },
+        });
+
+        // Same flat shape as the old GROUP BY query.
+        const users = records.map((user) => {
+            const employee = user.employees;
+
+            return {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                is_active: user.is_active,
+                created_at: user.created_at,
+                // Unique, sorted role names (old: ARRAY_AGG(DISTINCT r.name)).
+                roles: [
+                    ...new Set(user.user_roles.map((userRole) => userRole.roles.name)),
+                ].sort(),
+                employee_id: employee?.id ?? null,
+                employee_number: employee?.employee_number ?? null,
+                phone: employee?.phone ?? null,
+                department_id: employee?.department_id ?? null,
+                department_name: employee?.departments?.name ?? null,
+                designation_id: employee?.designation_id ?? null,
+                designation_title: employee?.designations?.title ?? null,
+                joining_date: employee?.joining_date ?? null,
+                employment_status: employee?.employment_status ?? null,
+            };
+        });
 
         return res.status(200).json({
-            count: result.rows.length,
-            users: result.rows,
+            count: users.length,
+            users,
         });
 
 
     } catch (error) {
-        console.error("PostgreSQL getAllUsers error:", error);
+        console.error("Prisma getAllUsers error:", error);
 
         return res.status(500).json({
             message: "Failed to retrieve users",
@@ -453,9 +456,6 @@ export const getAllUsers = async (req, res) => {
 
 
 export const deleteUser = async (req, res) => {
-    let client;
-    let transactionStarted = false;
-
     try {
         const userId = Number(req.params.userId);
 
@@ -471,101 +471,69 @@ export const deleteUser = async (req, res) => {
             });
         }
 
-        client = await pool.connect();
+        const result = await prisma.$transaction(async (tx) => {
+            // Lock the user row for the rest of the transaction (old: FOR UPDATE).
+            await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`;
 
-        await client.query("BEGIN");
-        transactionStarted = true;
-
-        // Lock the user row and check whether the account has an admin role.
-        const result = await client.query(
-            `SELECT
-                u.id,
-                u.name,
-                u.email,
-                u.is_active,
-                EXISTS (
-                    SELECT 1
-                    FROM user_roles ur
-                    JOIN roles r ON r.id = ur.role_id
-                    WHERE ur.user_id = u.id
-                      AND r.name = 'admin'
-                ) AS is_admin
-             FROM users u
-             WHERE u.id = $1
-             FOR UPDATE`,
-            [userId]
-        );
-
-        const user = result.rows[0];
-
-
-
-        if (!user) {
-            await client.query("ROLLBACK");
-            transactionStarted = false;
-
-            return res.status(404).json({
-                message: "User not found",
+            const user = await tx.users.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    is_active: true,
+                    user_roles: { select: { roles: { select: { name: true } } } },
+                },
             });
-        }
 
-        if (user.is_admin) {
-            await client.query("ROLLBACK");
-            transactionStarted = false;
-
-            return res.status(403).json({
-                message: "Admin accounts cannot be deactivated through this endpoint",
-            });
-        }
-
-        if (!user.is_active) {
-            await client.query("ROLLBACK");
-            transactionStarted = false;
-
-            return res.status(409).json({
-                message: "User is already inactive",
-            });
-        }
-
-        // Actually deactivate the account.
-        await client.query(
-            `UPDATE users
-             SET is_active = FALSE,
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE id = $1`,
-            [userId]
-        );
-
-        await client.query("COMMIT");
-        transactionStarted = false;
-
-        return res.status(200).json({
-            message: "User deactivated successfully",
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email,
-                is_active: false,
-            },
-        });
-    } catch (error) {
-        if (client && transactionStarted) {
-            try {
-                await client.query("ROLLBACK");
-            } catch (rollbackError) {
-                console.error("Rollback error:", rollbackError);
+            if (!user) {
+                return { status: 404, body: { message: "User not found" } };
             }
-        }
 
-        console.error("PostgreSQL deleteUser error:", error);
+            const isAdmin = user.user_roles.some(
+                (userRole) => userRole.roles.name === "admin"
+            );
+
+            if (isAdmin) {
+                return {
+                    status: 403,
+                    body: {
+                        message: "Admin accounts cannot be deactivated through this endpoint",
+                    },
+                };
+            }
+
+            if (!user.is_active) {
+                return { status: 409, body: { message: "User is already inactive" } };
+            }
+
+            // Actually deactivate the account.
+            await tx.users.update({
+                where: { id: userId },
+                data: { is_active: false, updated_at: new Date() },
+            });
+
+            return {
+                status: 200,
+                body: {
+                    message: "User deactivated successfully",
+                    user: {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        is_active: false,
+                    },
+                },
+            };
+        });
+
+        return res.status(result.status).json(result.body);
+    } catch (error) {
+        console.error("Prisma deleteUser error:", error);
 
         return res.status(500).json({
             message: "Failed to deactivate user",
         });
-    } finally {
-        if (client) {
-            client.release();
-        }
     }
 };
 
@@ -573,9 +541,6 @@ export const deleteUser = async (req, res) => {
 
 
 export const updateEmployee = async (req, res) => {
-    let client;
-    let transactionStarted = false;
-
     try {
         const { employeeId } = req.params;
         const {
@@ -644,170 +609,141 @@ export const updateEmployee = async (req, res) => {
             });
         }
 
-        client = await pool.connect();
-        await client.query("BEGIN");
-        transactionStarted = true;
+        const id = Number(employeeId);
 
-        const employeeResult = await client.query(
-            `SELECT id, user_id
-             FROM employees
-             WHERE id = $1
-             FOR UPDATE`,
-            [Number(employeeId)]
-        );
+        const result = await prisma.$transaction(async (tx) => {
+            // Lock the employee row (old: SELECT ... FOR UPDATE).
+            const [employee] = await tx.$queryRaw`
+                SELECT id, user_id
+                FROM employees
+                WHERE id = ${id}
+                FOR UPDATE`;
 
-        if (employeeResult.rows.length === 0) {
-            await client.query("ROLLBACK");
-            transactionStarted = false;
-            return res.status(404).json({
-                message: "Employee not found",
-            });
-        }
-
-        const employee = employeeResult.rows[0];
-
-        if (role !== undefined) {
-            if (!employee.user_id) {
-                await client.query("ROLLBACK");
-                transactionStarted = false;
-                return res.status(409).json({
-                    message: "This employee record is not linked to a user account",
-                });
+            if (!employee) {
+                return { status: 404, body: { message: "Employee not found" } };
             }
 
-            const currentRoles = await client.query(
-                `SELECT r.name
-                 FROM user_roles ur
-                 JOIN roles r ON r.id = ur.role_id
-                 WHERE ur.user_id = $1`,
-                [employee.user_id]
-            );
-            const isCurrentlyAdmin = currentRoles.rows.some(
-                (currentRole) => currentRole.name === "admin"
-            );
+            if (role !== undefined) {
+                if (!employee.user_id) {
+                    return {
+                        status: 409,
+                        body: { message: "This employee record is not linked to a user account" },
+                    };
+                }
 
-            if (
-                Number(employee.user_id) === req.user.userId &&
-                role !== "admin"
-            ) {
-                await client.query("ROLLBACK");
-                transactionStarted = false;
-                return res.status(409).json({
-                    message: "You cannot remove your own administrator role",
+                const account = await tx.users.findUnique({
+                    where: { id: employee.user_id },
+                    select: { is_active: true },
                 });
-            }
 
-            if (isCurrentlyAdmin && role !== "admin") {
-                const adminCount = await client.query(
-                    `SELECT COUNT(DISTINCT u.id)::INTEGER AS count
-                     FROM users u
-                     JOIN user_roles ur ON ur.user_id = u.id
-                     JOIN roles r ON r.id = ur.role_id
-                     WHERE r.name = 'admin'
-                       AND u.is_active = TRUE`
+                if (!account?.is_active) {
+                    return {
+                        status: 409,
+                        body: { message: "Cannot change the role of a deactivated account" },
+                    };
+                }
+
+
+                const currentRoles = await tx.user_roles.findMany({
+                    where: { user_id: employee.user_id },
+                    select: { roles: { select: { name: true } } },
+                });
+                const isCurrentlyAdmin = currentRoles.some(
+                    (currentRole) => currentRole.roles.name === "admin"
                 );
 
-                if (adminCount.rows[0].count <= 1) {
-                    await client.query("ROLLBACK");
-                    transactionStarted = false;
-                    return res.status(409).json({
-                        message: "Cannot remove the last active administrator",
-                    });
+                if (
+                    Number(employee.user_id) === req.user.userId &&
+                    role !== "admin"
+                ) {
+                    return {
+                        status: 409,
+                        body: { message: "You cannot remove your own administrator role" },
+                    };
                 }
+
+                if (isCurrentlyAdmin && role !== "admin") {
+                    const adminCount = await tx.users.count({
+                        where: {
+                            is_active: true,
+                            user_roles: { some: { roles: { name: "admin" } } },
+                        },
+                    });
+
+                    if (adminCount <= 1) {
+                        return {
+                            status: 409,
+                            body: { message: "Cannot remove the last active administrator" },
+                        };
+                    }
+                }
+
+                const roleRecord = await tx.roles.findUnique({
+                    where: { name: role },
+                    select: { id: true },
+                });
+
+                if (!roleRecord) {
+                    throw new Error(`Role "${role}" does not exist in the roles table`);
+                }
+
+                await tx.user_roles.deleteMany({
+                    where: { user_id: employee.user_id },
+                });
+                await tx.user_roles.create({
+                    data: { user_id: employee.user_id, role_id: roleRecord.id },
+                });
             }
 
-            const roleResult = await client.query(
-                "SELECT id FROM roles WHERE name = $1",
-                [role]
-            );
+            let updatedEmployee = employee;
+            if (
+                department_id !== undefined ||
+                designation_id !== undefined ||
+                employment_status !== undefined
+            ) {
+                // Only the fields that were sent; null clears department/designation.
+                const data = { updated_at: new Date() };
+                if (department_id !== undefined) data.department_id = department_id;
+                if (designation_id !== undefined) data.designation_id = designation_id;
+                if (employment_status !== undefined) data.employment_status = employment_status;
 
-            if (roleResult.rows.length === 0) {
-                throw new Error(`Role "${role}" does not exist in the roles table`);
+                updatedEmployee = await tx.employees.update({
+                    where: { id },
+                    data,
+                    select: {
+                        id: true,
+                        user_id: true,
+                        employee_number: true,
+                        department_id: true,
+                        designation_id: true,
+                        employment_status: true,
+                        joining_date: true,
+                    },
+                });
             }
 
-            await client.query(
-                "DELETE FROM user_roles WHERE user_id = $1",
-                [employee.user_id]
-            );
-            await client.query(
-                `INSERT INTO user_roles (user_id, role_id)
-                 VALUES ($1, $2)`,
-                [employee.user_id, roleResult.rows[0].id]
-            );
-        }
-
-        let updatedEmployee = employee;
-        if (
-            department_id !== undefined ||
-            designation_id !== undefined ||
-            employment_status !== undefined
-        ) {
-            const result = await client.query(
-                `UPDATE employees
-                 SET
-                    department_id = CASE
-                        WHEN $1::BOOLEAN THEN $2::INTEGER
-                        ELSE department_id
-                    END,
-                    designation_id = CASE
-                        WHEN $3::BOOLEAN THEN $4::INTEGER
-                        ELSE designation_id
-                    END,
-                    employment_status = COALESCE(
-                        $5::VARCHAR, employment_status
-                    ),
-                    updated_at = CURRENT_TIMESTAMP
-                 WHERE id = $6
-                 RETURNING
-                    id,
-                    user_id,
-                    employee_number,
-                    department_id,
-                    designation_id,
-                    employment_status,
-                    joining_date`,
-                [
-                    department_id !== undefined,
-                    department_id ?? null,
-                    designation_id !== undefined,
-                    designation_id ?? null,
-                    employment_status ?? null,
-                    Number(employeeId),
-                ]
-            );
-            updatedEmployee = result.rows[0];
-        }
-
-        await client.query("COMMIT");
-        transactionStarted = false;
-
-        return res.status(200).json({
-            message: "Employee updated successfully",
-            employee: updatedEmployee,
+            return {
+                status: 200,
+                body: {
+                    message: "Employee updated successfully",
+                    employee: updatedEmployee,
+                },
+            };
         });
-    } catch (error) {
-        if (client && transactionStarted) {
-            try {
-                await client.query("ROLLBACK");
-            } catch (rollbackError) {
-                console.error("Update employee rollback error:", rollbackError);
-            }
-        }
 
-        if (error.code === "23503") {
+        return res.status(result.status).json(result.body);
+    } catch (error) {
+        // Foreign key failed -> department or designation ID doesn't exist.
+        if (error.code === "P2003") {
             return res.status(400).json({
                 message: "Department or designation does not exist",
             });
         }
 
-        console.error("Update employee error:", error);
+        console.error("Prisma updateEmployee error:", error);
 
         return res.status(500).json({
             message: "Failed to update employee",
         });
-    } finally {
-        if (client) {
-            client.release();
-        }
     }
 };

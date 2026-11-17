@@ -1,19 +1,20 @@
-import pool from "../config/postgres.js";
+import prisma from "../config/prisma.js";
 
 const userValidation = async (req, res, next) => {
   try {
-    const result = await pool.query(
-      "SELECT id FROM employees WHERE user_id = $1",
-      [req.user.userId]
-    );
+    // users.id -> employees.id (they are different values).
+    const employee = await prisma.employees.findUnique({
+      where: { user_id: req.user.userId },
+      select: { id: true },
+    });
 
-    if (result.rows.length === 0) {
+    if (!employee) {
       return res.status(404).json({
         message: "No employee record found for this user.",
       });
     }
 
-    req.employee = result.rows[0];
+    req.employee = employee;
 
     next();
   } catch (error) {

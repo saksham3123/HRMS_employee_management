@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken"
-import pool from "../config/postgres.js";
+import prisma from "../config/prisma.js";
 
 const authMiddleware = async (req, res, next) => {
     try {
@@ -25,12 +25,13 @@ const authMiddleware = async (req, res, next) => {
             })
         }
 
-        const result = await pool.query(
-            "SELECT is_active FROM users WHERE id = $1",
-            [decoded.userId]
-        );
+        // Make sure the account still exists and hasn't been deactivated.
+        const user = await prisma.users.findUnique({
+            where: { id: decoded.userId },
+            select: { is_active: true },
+        });
 
-        if (result.rows.length === 0 || !result.rows[0].is_active) {
+        if (!user || !user.is_active) {
             return res.status(401).json({
                 message: "Account is inactive or no longer exists",
             });
@@ -42,7 +43,7 @@ const authMiddleware = async (req, res, next) => {
 
 
     } catch (error) {
-    console.error("Authentication middleware error:", error);
+    
 
     if (
         error.name === "JsonWebTokenError" ||
@@ -53,6 +54,8 @@ const authMiddleware = async (req, res, next) => {
             message: "Invalid or expired token",
         });
     }
+
+    console.error("Authentication middleware error:", error);
 
     return res.status(500).json({
         message: "Authentication failed due to a server error",

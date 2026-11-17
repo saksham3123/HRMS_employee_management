@@ -28,6 +28,15 @@ export const apiRequest = async (endpoint, options = {}) => {
   const data = contentType?.includes("application/json")
     ? await response.json()
     : null;
+    
+  // Expired or invalid login: clear the saved session and go to the login page.
+  // (Not for the login request itself, where 401 just means a wrong password.)
+  if (response.status === 401 && endpoint !== "/users/login") {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+    throw new Error("Your session has expired. Please log in again.");
+  }
 
   if (!response.ok) {
     throw new Error(data?.message || "Something went wrong");

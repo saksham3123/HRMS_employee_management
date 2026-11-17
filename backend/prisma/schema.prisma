@@ -46,8 +46,8 @@ model employee_reporting {
   manager_employee_id                                         Int
   effective_from                                              DateTime  @default(dbgenerated("CURRENT_DATE")) @db.Date
   effective_to                                                DateTime? @db.Date
-  employees_employee_reporting_employee_idToemployees         employees @relation("employee_reporting_employee_idToemployees", fields: [employee_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  employees_employee_reporting_manager_employee_idToemployees employees @relation("employee_reporting_manager_employee_idToemployees", fields: [manager_employee_id], references: [id], onUpdate: NoAction)
+   employee  employees @relation("employee_reporting_employee_idToemployees", fields: [employee_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  manager   employees @relation("employee_reporting_manager_employee_idToemployees", fields: [manager_employee_id], references: [id], onUpdate: NoAction)
 
   @@unique([employee_id, effective_from])
   @@index([manager_employee_id], map: "employee_reporting_manager_idx")
@@ -66,8 +66,8 @@ model employees {
   created_at                                                           DateTime             @default(now()) @db.Timestamptz(6)
   updated_at                                                           DateTime             @default(now()) @db.Timestamptz(6)
   attendance                                                           attendance[]
-  employee_reporting_employee_reporting_employee_idToemployees         employee_reporting[] @relation("employee_reporting_employee_idToemployees")
-  employee_reporting_employee_reporting_manager_employee_idToemployees employee_reporting[] @relation("employee_reporting_manager_employee_idToemployees")
+   reporting_lines  employee_reporting[] @relation("employee_reporting_employee_idToemployees")
+  direct_reports   employee_reporting[] @relation("employee_reporting_manager_employee_idToemployees")
   departments                                                          departments?         @relation(fields: [department_id], references: [id], onUpdate: NoAction)
   designations                                                         designations?        @relation(fields: [designation_id], references: [id], onUpdate: NoAction)
   users                                                                users?               @relation(fields: [user_id], references: [id], onUpdate: NoAction)

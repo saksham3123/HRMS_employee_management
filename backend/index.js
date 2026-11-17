@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import pool from "./config/postgres.js";
+import prisma from "./config/prisma.js";
 
 import cors from "cors";
 import userRoutes from "./routes/user.route.js";
@@ -37,7 +37,7 @@ const port = process.env.PORT || 3000;
 const startServer = async () => {
   try {
     // Verify PostgreSQL is available before starting the server.
-    await pool.query("SELECT 1");
+    await prisma.$queryRaw`SELECT 1`;
 
     console.log("PostgreSQL connected");
 

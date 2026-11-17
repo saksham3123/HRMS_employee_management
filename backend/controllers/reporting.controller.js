@@ -1,9 +1,31 @@
-
-import pool from "../config/postgres.js";
+import prisma from "../config/prisma.js";
 import { createsReportingCycle } from "../helpers/reporting.helper.js";
 
-const isValidId = (id) =>
-  Number.isInteger(Number(id)) && Number(id) > 0;
+// All IDs in this file are employees.id (NOT users.id), except
+// getManagerTeam, which finds the manager from the logged-in user.
+
+const isValidId = (id) => Number.isInteger(Number(id)) && Number(id) > 0;
+
+// "Today" according to PostgreSQL (CURRENT_DATE), as a UTC-midnight Date.
+const getDbToday = async (db) => {
+  const [{ today }] = await db.$queryRaw`SELECT CURRENT_DATE::text AS today`;
+  return new Date(`${today}T00:00:00.000Z`);
+};
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+// Locks both employee rows for the rest of the transaction (same as the old
+// SELECT ... FOR UPDATE), so two admins can't create a cycle at the same time.
+// Returns how many of the two employees exist.
+const lockEmployees = async (tx, employeeId, managerId) => {
+  const rows = await tx.$queryRaw`
+    SELECT id
+    FROM employees
+    WHERE id IN (${employeeId}, ${managerId})
+    FOR UPDATE`;
+
+  return rows.length;
+};
 
 // 1. Assign a manager when no active assignment exists.
 export const assignReportingManager = async (req, res) => {
@@ -22,71 +44,62 @@ export const assignReportingManager = async (req, res) => {
     });
   }
 
-  const client = await pool.connect();
-
   try {
-    await client.query("BEGIN");
+    // The transaction returns { status, body }; any early return simply ends
+    // it (nothing was written), and a thrown error rolls it back.
+    const { status, body } = await prisma.$transaction(async (tx) => {
+      if ((await lockEmployees(tx, employeeId, managerId)) !== 2) {
+        return {
+          status: 404,
+          body: { message: "Employee or reporting manager not found." },
+        };
+      }
 
-    const employees = await client.query(
-      `SELECT id
-       FROM employees
-       WHERE id = ANY($1::INTEGER[])
-       FOR UPDATE`,
-      [[employeeId, managerId]]
-    );
-
-    if (employees.rows.length !== 2) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({
-        message: "Employee or reporting manager not found.",
+      const existing = await tx.employee_reporting.findFirst({
+        where: { employee_id: employeeId, effective_to: null },
+        select: { id: true },
       });
-    }
 
-    const existing = await client.query(
-      `SELECT id
-       FROM employee_reporting
-       WHERE employee_id = $1
-         AND effective_to IS NULL`,
-      [employeeId]
-    );
+      if (existing) {
+        return {
+          status: 409,
+          body: {
+            message: "Employee already has a manager. Use the update endpoint.",
+          },
+        };
+      }
 
-    if (existing.rows.length > 0) {
-      await client.query("ROLLBACK");
-      return res.status(409).json({
-        message: "Employee already has a manager. Use the update endpoint.",
+      if (await createsReportingCycle(tx, employeeId, managerId)) {
+        return {
+          status: 400,
+          body: { message: "This assignment would create a reporting cycle." },
+        };
+      }
+
+      // effective_from is filled by the database default (CURRENT_DATE).
+      const reporting = await tx.employee_reporting.create({
+        data: {
+          employee_id: employeeId,
+          manager_employee_id: managerId,
+        },
       });
-    }
 
-    if (await createsReportingCycle(client, employeeId, managerId)) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({
-        message: "This assignment would create a reporting cycle.",
-      });
-    }
-
-    const result = await client.query(
-      `INSERT INTO employee_reporting
-         (employee_id, manager_employee_id, effective_from)
-       VALUES ($1, $2, CURRENT_DATE)
-       RETURNING *`,
-      [employeeId, managerId]
-    );
-
-    await client.query("COMMIT");
-
-    return res.status(201).json({
-      message: "Reporting manager assigned successfully.",
-      reporting: result.rows[0],
+      return {
+        status: 201,
+        body: {
+          message: "Reporting manager assigned successfully.",
+          reporting,
+        },
+      };
     });
+
+    return res.status(status).json(body);
   } catch (error) {
-    await client.query("ROLLBACK");
     console.error("Assign reporting manager error:", error);
 
     return res.status(500).json({
       message: "Failed to assign reporting manager.",
     });
-  } finally {
-    client.release();
   }
 };
 
@@ -107,122 +120,93 @@ export const updateReportingManager = async (req, res) => {
     });
   }
 
-  const client = await pool.connect();
-
   try {
-    await client.query("BEGIN");
+    const { status, body } = await prisma.$transaction(async (tx) => {
+      if ((await lockEmployees(tx, employeeId, managerId)) !== 2) {
+        return {
+          status: 404,
+          body: { message: "Employee or reporting manager not found." },
+        };
+      }
 
-    const employees = await client.query(
-      `SELECT id
-       FROM employees
-       WHERE id = ANY($1::INTEGER[])
-       FOR UPDATE`,
-      [[employeeId, managerId]]
-    );
+      // Lock the current assignment row (old: SELECT ... FOR UPDATE).
+      const [current] = await tx.$queryRaw`
+        SELECT id, manager_employee_id, effective_from::text AS effective_from
+        FROM employee_reporting
+        WHERE employee_id = ${employeeId}
+          AND effective_to IS NULL
+        FOR UPDATE`;
 
-    if (employees.rows.length !== 2) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({
-        message: "Employee or reporting manager not found.",
+      if (!current) {
+        return {
+          status: 404,
+          body: { message: "No current manager found. Use the assign endpoint." },
+        };
+      }
+
+      if (Number(current.manager_employee_id) === managerId) {
+        return {
+          status: 400,
+          body: { message: "Employee already has this reporting manager." },
+        };
+      }
+
+      if (await createsReportingCycle(tx, employeeId, managerId)) {
+        return {
+          status: 400,
+          body: { message: "This assignment would create a reporting cycle." },
+        };
+      }
+
+      const today = await getDbToday(tx);
+      const todayText = today.toISOString().slice(0, 10);
+
+      if (current.effective_from === todayText) {
+        // Reuse today's record because (employee_id, effective_from) is unique.
+        const reporting = await tx.employee_reporting.update({
+          where: { id: current.id },
+          data: { manager_employee_id: managerId },
+        });
+
+        return {
+          status: 200,
+          body: { message: "Reporting manager updated successfully.", reporting },
+        };
+      }
+
+      // Close the old assignment yesterday, start the new one today.
+      await tx.employee_reporting.update({
+        where: { id: current.id },
+        data: { effective_to: new Date(today.getTime() - ONE_DAY_MS) },
       });
-    }
 
-    const current = await client.query(
-      `SELECT id, manager_employee_id, effective_from
-       FROM employee_reporting
-       WHERE employee_id = $1
-         AND effective_to IS NULL
-       FOR UPDATE`,
-      [employeeId]
-    );
-
-    if (current.rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({
-        message: "No current manager found. Use the assign endpoint.",
+      const reporting = await tx.employee_reporting.create({
+        data: {
+          employee_id: employeeId,
+          manager_employee_id: managerId,
+          effective_from: today,
+        },
       });
-    }
 
-    if (Number(current.rows[0].manager_employee_id) === managerId) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({
-        message: "Employee already has this reporting manager.",
-      });
-    }
-
-    if (await createsReportingCycle(client, employeeId, managerId)) {
-      await client.query("ROLLBACK");
-      return res.status(400).json({
-        message: "This assignment would create a reporting cycle.",
-      });
-    }
-
-    const assignment = current.rows[0];
-    const effectiveFrom = new Date(assignment.effective_from)
-      .toISOString()
-      .slice(0, 10);
-
-    const todayResult = await client.query(
-      "SELECT CURRENT_DATE::TEXT AS today"
-    );
-    const today = todayResult.rows[0].today;
-
-    if (effectiveFrom === today) {
-      // Reuse today's record because employee/date is unique.
-      const result = await client.query(
-        `UPDATE employee_reporting
-         SET manager_employee_id = $2
-         WHERE id = $1
-         RETURNING *`,
-        [assignment.id, managerId]
-      );
-
-      await client.query("COMMIT");
-
-      return res.status(200).json({
-        message: "Reporting manager updated successfully.",
-        reporting: result.rows[0],
-      });
-    }
-
-    await client.query(
-      `UPDATE employee_reporting
-       SET effective_to = CURRENT_DATE - 1
-       WHERE id = $1`,
-      [assignment.id]
-    );
-
-    const result = await client.query(
-      `INSERT INTO employee_reporting
-         (employee_id, manager_employee_id, effective_from)
-       VALUES ($1, $2, CURRENT_DATE)
-       RETURNING *`,
-      [employeeId, managerId]
-    );
-
-    await client.query("COMMIT");
-
-    return res.status(200).json({
-      message: "Reporting manager updated successfully.",
-      reporting: result.rows[0],
+      return {
+        status: 200,
+        body: { message: "Reporting manager updated successfully.", reporting },
+      };
     });
+
+    return res.status(status).json(body);
   } catch (error) {
-    await client.query("ROLLBACK");
     console.error("Update reporting manager error:", error);
 
     return res.status(500).json({
       message: "Failed to update reporting manager.",
     });
-  } finally {
-    client.release();
   }
 };
 
-
-
-
 // 3. View an employee's manager.
 // The route requires both employee-record and user-list permissions for this lookup.
+// Also used by GET /api/users/me/manager (employeeId comes from req.employee.id).
 export const getReportingManager = async (req, res) => {
   const employeeId = Number(req.params.employeeId);
 
@@ -233,37 +217,49 @@ export const getReportingManager = async (req, res) => {
   }
 
   try {
-    const result = await pool.query(
-      `SELECT
-         e.id AS employee_id,
-         e.employee_number,
-         manager.id AS manager_employee_id,
-         manager.employee_number AS manager_employee_number,
-         u.name AS manager_name,
-         u.email AS manager_email,
-         d.name AS manager_department,
-         ds.title AS manager_designation
-       FROM employees e
-       LEFT JOIN employee_reporting er
-         ON er.employee_id = e.id
-        AND er.effective_to IS NULL
-       LEFT JOIN employees manager
-         ON manager.id = er.manager_employee_id
-       LEFT JOIN users u ON u.id = manager.user_id
-       LEFT JOIN departments d ON d.id = manager.department_id
-       LEFT JOIN designations ds ON ds.id = manager.designation_id
-       WHERE e.id = $1`,
-      [employeeId]
-    );
+    const employee = await prisma.employees.findUnique({
+      where: { id: employeeId },
+      select: {
+        id: true,
+        employee_number: true,
+        reporting_lines: {
+          where: { effective_to: null },
+          take: 1,
+          select: {
+            manager: {
+              select: {
+                id: true,
+                employee_number: true,
+                users: { select: { name: true, email: true } },
+                departments: { select: { name: true } },
+                designations: { select: { title: true } },
+              },
+            },
+          },
+        },
+      },
+    });
 
-    if (result.rows.length === 0) {
+    if (!employee) {
       return res.status(404).json({
         message: "Employee not found.",
       });
     }
 
+    const manager = employee.reporting_lines[0]?.manager ?? null;
+
+    // Same flat shape as the old LEFT JOIN query (nulls when no manager).
     return res.status(200).json({
-      reporting: result.rows[0],
+      reporting: {
+        employee_id: employee.id,
+        employee_number: employee.employee_number,
+        manager_employee_id: manager?.id ?? null,
+        manager_employee_number: manager?.employee_number ?? null,
+        manager_name: manager?.users?.name ?? null,
+        manager_email: manager?.users?.email ?? null,
+        manager_department: manager?.departments?.name ?? null,
+        manager_designation: manager?.designations?.title ?? null,
+      },
     });
   } catch (error) {
     console.error("Get reporting manager error:", error);
@@ -285,17 +281,18 @@ export const removeReportingManager = async (req, res) => {
   }
 
   try {
-    const result = await pool.query(
-      `UPDATE employee_reporting
-       SET effective_to = CURRENT_DATE
-       WHERE employee_id = $1
-         AND effective_to IS NULL
-         AND effective_from <= CURRENT_DATE
-       RETURNING *`,
-      [employeeId]
-    );
+    const today = await getDbToday(prisma);
 
-    if (result.rows.length === 0) {
+    const [reporting] = await prisma.employee_reporting.updateManyAndReturn({
+      where: {
+        employee_id: employeeId,
+        effective_to: null,
+        effective_from: { lte: today },
+      },
+      data: { effective_to: today },
+    });
+
+    if (!reporting) {
       return res.status(404).json({
         message: "No current manager assignment found.",
       });
@@ -303,7 +300,7 @@ export const removeReportingManager = async (req, res) => {
 
     return res.status(200).json({
       message: "Reporting manager assignment ended successfully.",
-      reporting: result.rows[0],
+      reporting,
     });
   } catch (error) {
     console.error("Remove reporting manager error:", error);
@@ -323,34 +320,44 @@ export const getManagerTeam = async (req, res) => {
   }
 
   try {
-    const result = await pool.query(
-      `SELECT
-         e.id AS employee_id,
-         e.employee_number,
-         e.phone,
-         e.joining_date,
-         e.employment_status,
-         u.id AS user_id,
-         u.name,
-         u.email,
-         d.name AS department_name,
-         ds.title AS designation_title
-       FROM employees manager
-       JOIN employee_reporting er
-         ON er.manager_employee_id = manager.id
-        AND er.effective_to IS NULL
-       JOIN employees e ON e.id = er.employee_id
-       LEFT JOIN users u ON u.id = e.user_id
-       LEFT JOIN departments d ON d.id = e.department_id
-       LEFT JOIN designations ds ON ds.id = e.designation_id
-       WHERE manager.user_id = $1
-       ORDER BY u.name ASC`,
-      [req.user.userId]
-    );
+    const assignments = await prisma.employee_reporting.findMany({
+      where: {
+        effective_to: null,
+        manager: { user_id: req.user.userId },
+      },
+      select: {
+        employee: {
+          select: {
+            id: true,
+            employee_number: true,
+            phone: true,
+            joining_date: true,
+            employment_status: true,
+            users: { select: { id: true, name: true, email: true } },
+            departments: { select: { name: true } },
+            designations: { select: { title: true } },
+          },
+        },
+      },
+      orderBy: { employee: { users: { name: "asc" } } },
+    });
+
+    const team = assignments.map(({ employee }) => ({
+      employee_id: employee.id,
+      employee_number: employee.employee_number,
+      phone: employee.phone,
+      joining_date: employee.joining_date,
+      employment_status: employee.employment_status,
+      user_id: employee.users?.id ?? null,
+      name: employee.users?.name ?? null,
+      email: employee.users?.email ?? null,
+      department_name: employee.departments?.name ?? null,
+      designation_title: employee.designations?.title ?? null,
+    }));
 
     return res.status(200).json({
-      count: result.rows.length,
-      team: result.rows,
+      count: team.length,
+      team,
     });
   } catch (error) {
     console.error("Get manager team error:", error);

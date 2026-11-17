@@ -1,4 +1,4 @@
-import pool from "../config/postgres.js";
+import prisma from "../config/prisma.js";
 
 const requirePermission = (permissionKey) => {
     return async (req, res, next) => {
@@ -9,24 +9,22 @@ const requirePermission = (permissionKey) => {
                 });
             }
 
-            const result = await pool.query(
-                `SELECT 1
-                 FROM user_roles ur
-                 JOIN role_permissions rp
-                    ON rp.role_id = ur.role_id
-                 JOIN permissions p
-                    ON p.id = rp.permission_id
-                 JOIN users u
-                    ON u.id = ur.user_id
-                 WHERE ur.user_id = $1
-                   AND p.permission_key = $2
-                   AND u.is_active = TRUE
-                 LIMIT 1`,
-                [req.user.userId, permissionKey]
-            );
+            // Does this active user have a role that grants permissionKey?
+            const match = await prisma.user_roles.findFirst({
+                where: {
+                    user_id: req.user.userId,
+                    users: { is_active: true },
+                    roles: {
+                        role_permissions: {
+                            some: { permissions: { permission_key: permissionKey } },
+                        },
+                    },
+                },
+                select: { user_id: true },
+            });
 
             // User doesn't have the required permission.
-            if (result.rows.length === 0) {
+            if (!match) {
                 return res.status(403).json({
                     message: "You do not have permission to perform this action",
                 });

@@ -9,6 +9,29 @@ const getEmployeeByUserId = (userId) =>
     select: { id: true, user_id: true },
   });
 
+// Hourly rate from .env (e.g. HOURLY_RATE=120). Saved on each attendance
+// row at clock-in, so changing it later doesn't alter past pay.
+// const DEFAULT_HOURLY_RATE = 100;
+
+const getHourlyRate = () => {
+  const raw = process.env.HOURLY_RATE;
+
+  if (raw === undefined || raw.trim() === "") {
+    return DEFAULT_HOURLY_RATE;
+  }
+
+  const rate = Number(raw);
+
+  if (!Number.isFinite(rate) || rate < 0) {
+    console.warn(
+      `Invalid HOURLY_RATE "${raw}" in .env, using ${DEFAULT_HOURLY_RATE}`
+    );
+    return DEFAULT_HOURLY_RATE;
+  }
+
+  return rate;
+};
+
 // "Today" according to PostgreSQL (CURRENT_DATE), so the date logic stays
 // exactly as before and doesn't depend on the Node server's timezone.
 const getDbToday = async () => {
@@ -64,6 +87,7 @@ export const clockIn = async (req, res) => {
       data: {
         employee_id: employee.id,
         login_time: new Date(),
+        hourly_rate: getHourlyRate(),
       },
     });
 

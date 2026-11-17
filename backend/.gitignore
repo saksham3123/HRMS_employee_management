@@ -9,3 +9,6 @@ node_modules
 .claude/
 .windsurf/
 skills-lock.json
+
+# Files saved by the Claude app
+Claude outputs/
