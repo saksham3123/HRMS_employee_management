@@ -4,6 +4,9 @@ import EmployeeProfile from "./pages/EmployeeProfile";
 import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
+import PlatformLoginPage from "./pages/platform/PlatformLoginPage";
+import PlatformDashboard from "./pages/platform/PlatformDashboard";
+import PlatformProtectedRoute from "./components/platform/PlatformProtectedRoute";
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -26,6 +29,12 @@ export default function App() {
 
         <Route element={<ProtectedRoute allowedRole="employee" />}>
           <Route path="/user/profile" element={<EmployeeProfile />} />
+        </Route>
+
+        {/* PeopleDesk platform (super admin) area: separate login and session */}
+        <Route path="/platform/login" element={<PlatformLoginPage />} />
+        <Route element={<PlatformProtectedRoute />}>
+          <Route path="/platform" element={<PlatformDashboard />} />
         </Route>
 
         <Route path="/" element={<HomeRedirect />} />

@@ -10,6 +10,7 @@ import leaveRoutes from "./routes/leave.route.js"
 import departmentRoutes from "./routes/department.route.js"
 import designationRoutes from "./routes/designation.route.js";
 import managerRoutes from "./routes/manager.route.js"
+import platformRoutes from "./routes/platform.route.js";
 
 
 const app = express();
@@ -26,6 +27,7 @@ app.use("/api/leave", leaveRoutes)
 app.use("/api/departments" , departmentRoutes)
 app.use("/api/designations", designationRoutes);
 app.use("/api/manager", managerRoutes);
+app.use("/api/platform", platformRoutes);
 
 
 app.get("/", (req, res) => {

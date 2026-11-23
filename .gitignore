@@ -22,3 +22,8 @@ Thumbs.db
 
 # Files saved by the Claude app
 Claude outputs/
+
+# Database backups (never commit: they contain real data)
+*.dump
+*.sql.gz
+hrms_backup_*

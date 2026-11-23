@@ -19,24 +19,37 @@ model attendance {
   created_at    DateTime  @default(now()) @db.Timestamptz(6)
   updated_at    DateTime  @default(now()) @db.Timestamptz(6)
   employees     employees @relation(fields: [employee_id], references: [id], onUpdate: NoAction)
+  organization_id Int
+  organization    organizations @relation(fields: [organization_id], references: [id])
 
   @@unique([employee_id, date], map: "attendance_employee_date_unique")
   @@index([date], map: "attendance_data_idx")
+  @@index([organization_id])
 }
 
 model departments {
   id          Int         @id @default(autoincrement())
-  name        String      @unique @db.VarChar(120)
+  name        String      @db.VarChar(120)
   description String?
   created_at  DateTime    @default(now()) @db.Timestamptz(6)
   employees   employees[]
+  organization_id Int
+  organization    organizations @relation(fields: [organization_id], references: [id])
+
+  @@unique([organization_id, name])
+  @@index([organization_id])
 }
 
 model designations {
   id          Int         @id @default(autoincrement())
-  title       String      @unique @db.VarChar(120)
+  title       String      @db.VarChar(120)
   description String?
   employees   employees[]
+  organization_id Int
+  organization    organizations @relation(fields: [organization_id], references: [id])
+
+  @@unique([organization_id, title])
+  @@index([organization_id])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -46,18 +59,22 @@ model employee_reporting {
   manager_employee_id                                         Int
   effective_from                                              DateTime  @default(dbgenerated("CURRENT_DATE")) @db.Date
   effective_to                                                DateTime? @db.Date
-   employee  employees @relation("employee_reporting_employee_idToemployees", fields: [employee_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  employee  employees @relation("employee_reporting_employee_idToemployees", fields: [employee_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   manager   employees @relation("employee_reporting_manager_employee_idToemployees", fields: [manager_employee_id], references: [id], onUpdate: NoAction)
+
+  organization_id Int
+  organization    organizations @relation(fields: [organization_id], references: [id])
 
   @@unique([employee_id, effective_from])
   @@index([manager_employee_id], map: "employee_reporting_manager_idx")
+  @@index([organization_id])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model employees {
   id                                                                   Int                  @id @default(autoincrement())
   user_id                                                              Int?                 @unique
-  employee_number                                                      String               @unique @db.VarChar(50)
+  employee_number                                                      String               @db.VarChar(50)
   phone                                                                String?              @db.VarChar(30)
   department_id                                                        Int?
   designation_id                                                       Int?
@@ -66,15 +83,19 @@ model employees {
   created_at                                                           DateTime             @default(now()) @db.Timestamptz(6)
   updated_at                                                           DateTime             @default(now()) @db.Timestamptz(6)
   attendance                                                           attendance[]
-   reporting_lines  employee_reporting[] @relation("employee_reporting_employee_idToemployees")
+  reporting_lines  employee_reporting[] @relation("employee_reporting_employee_idToemployees")
   direct_reports   employee_reporting[] @relation("employee_reporting_manager_employee_idToemployees")
   departments                                                          departments?         @relation(fields: [department_id], references: [id], onUpdate: NoAction)
   designations                                                         designations?        @relation(fields: [designation_id], references: [id], onUpdate: NoAction)
   users                                                                users?               @relation(fields: [user_id], references: [id], onUpdate: NoAction)
   leave_requests                                                       leave_requests[]
+  organization_id Int
+  organization    organizations @relation(fields: [organization_id], references: [id])
 
+  @@unique([organization_id, employee_number])
   @@index([department_id], map: "employees_department_idx")
   @@index([designation_id], map: "employees_designation_idx")
+  @@index([organization_id])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -95,18 +116,47 @@ model leave_requests {
   leave_types    leave_types @relation(fields: [leave_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users          users?      @relation(fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  organization_id Int
+  organization    organizations @relation(fields: [organization_id], references: [id])
+
   @@index([employee_id], map: "idx_leave_requests_employee")
   @@index([status], map: "idx_leave_requests_status")
+  @@index([organization_id])
 }
 
 model leave_types {
   id             Int              @id @default(autoincrement())
-  name           String           @unique @db.VarChar(50)
+  name           String           @db.VarChar(50)
   description    String?
   is_paid        Boolean          @default(true)
   is_active      Boolean          @default(true)
   created_at     DateTime         @default(now()) @db.Timestamptz(6)
   leave_requests leave_requests[]
+  organization_id Int
+  organization    organizations @relation(fields: [organization_id], references: [id])
+
+  @@unique([organization_id, name])
+  @@index([organization_id])
+}
+
+/// A company using PeopleDesk. Every company-owned row points here.
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model organizations {
+  id                 Int                  @id @default(autoincrement())
+  name               String               @db.VarChar(150)
+  slug               String               @unique @db.VarChar(80)
+  status             String               @default("active") @db.VarChar(20)
+  plan               String               @default("free") @db.VarChar(30)
+  created_at         DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime             @default(now()) @db.Timestamptz(6)
+  users              users[]
+  employees          employees[]
+  departments        departments[]
+  designations       designations[]
+  leave_types        leave_types[]
+  leave_requests     leave_requests[]
+  attendance         attendance[]
+  employee_reporting employee_reporting[]
 }
 
 model permissions {
@@ -157,4 +207,22 @@ model users {
   employees      employees?
   leave_requests leave_requests[]
   user_roles     user_roles[]
+  organization_id Int
+  organization    organizations @relation(fields: [organization_id], references: [id])
+
+  @@index([organization_id])
+}
+
+
+
+model platform_admins {
+  id             Int             @id @default(autoincrement())
+  name           String          @db.VarChar(150)
+  email          String          @unique @db.VarChar(255)
+  password       String          @db.VarChar(255) 
+  is_active      Boolean         @default(true)
+  created_at     DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime        @default(now()) @updatedAt @db.Timestamptz(6)
+
+  
 }
