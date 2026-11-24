@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { PLANS } from "../../services/platformService";
 
 const initialForm = {
   name: "",
@@ -22,7 +21,8 @@ const toSlug = (value) =>
 const inputClass =
   "w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
 
-export default function CreateOrganizationForm({ onSubmit, onCancel, saving = false }) {
+// `plans` are the plans currently offered (from the Plans page).
+export default function CreateOrganizationForm({ plans = [], onSubmit, onCancel, saving = false }) {
   const [form, setForm] = useState(initialForm);
   // Keep auto-filling the slug from the name until the user edits the slug.
   const [slugEdited, setSlugEdited] = useState(false);
@@ -106,11 +106,11 @@ export default function CreateOrganizationForm({ onSubmit, onCancel, saving = fa
               name="plan"
               value={form.plan}
               onChange={handleChange}
-              className={`${inputClass} bg-white capitalize`}
+              className={`${inputClass} bg-white`}
             >
-              {PLANS.map((plan) => (
-                <option key={plan} value={plan}>
-                  {plan}
+              {plans.map((plan) => (
+                <option key={plan.code} value={plan.code}>
+                  {plan.name}
                 </option>
               ))}
             </select>

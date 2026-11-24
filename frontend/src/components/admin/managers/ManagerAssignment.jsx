@@ -3,6 +3,8 @@ import managerService from "../../../services/managerServices";
 import { getAllEmployees } from "../../../services/adminService";
 import ManagerForm from "./ManagerForm";
 import ManagerTable from "./ManagerTable";
+import { confirmAction } from "../../../utils/confirmAction";
+import Modal from "../../common/Modal";
 
 const loadManagerData = async () => {
   const data = await getAllEmployees();
@@ -125,9 +127,12 @@ function ManagerAssignment({
   };
 
   const handleDelete = async (assignment) => {
-    const confirmed = window.confirm(
-      `Remove ${assignment.manager_name} as the reporting manager of ${assignment.employee_name}?`
-    );
+    const confirmed = await confirmAction({
+      title: "Remove reporting manager?",
+      text: `${assignment.employee_name} will no longer report to ${assignment.manager_name}.`,
+      confirmText: "Remove",
+      tone: "danger",
+    });
 
     if (!confirmed) return;
 
@@ -153,13 +158,8 @@ function ManagerAssignment({
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Reporting Managers</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Manage employee reporting relationships.
-          </p>
-        </div>
+      {/* The page title comes from the dashboard shell. */}
+      <div className="flex flex-wrap items-center justify-end gap-4">
         {canCreate && (
           <button
             type="button"
@@ -171,7 +171,7 @@ function ManagerAssignment({
         )}
       </div>
 
-      {error && (
+      {error && !showForm && (
         <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
           {error}
         </div>
@@ -182,23 +182,27 @@ function ManagerAssignment({
         </div>
       )}
 
-      {showForm && (
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold">
-            {selectedAssignment
-              ? "Change Reporting Manager"
-              : "Assign Reporting Manager"}
-          </h2>
-          <ManagerForm
-            key={selectedAssignment?.employee_id ?? "new"}
-            employees={employees}
-            selectedAssignment={selectedAssignment}
-            onSubmit={handleSubmit}
-            onCancel={() => setShowForm(false)}
-            loading={saving}
-          />
-        </div>
-      )}
+      <Modal
+        open={showForm}
+        title={selectedAssignment ? "Change reporting manager" : "Assign reporting manager"}
+        description="Choose who this employee reports to."
+        onClose={() => setShowForm(false)}
+        busy={saving}
+      >
+        {error && (
+          <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+        <ManagerForm
+          key={selectedAssignment?.employee_id ?? "new"}
+          employees={employees}
+          selectedAssignment={selectedAssignment}
+          onSubmit={handleSubmit}
+          onCancel={() => setShowForm(false)}
+          loading={saving}
+        />
+      </Modal>
 
       <ManagerTable
         assignments={assignments}

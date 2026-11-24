@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import designationService from "../../../services/designationService";
 import DesignationForm from "./DesignationForm";
 import DesignationTable from "./DesignationTable";
+import { confirmAction } from "../../../utils/confirmAction";
+import Modal from "../../common/Modal";
 
 const getDesignations = async () => {
     const response = await designationService.getAll();
@@ -110,9 +112,12 @@ function Designations({
   };
 
   const handleDelete = async (designation) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${designation.title}?`
-    );
+    const confirmed = await confirmAction({
+      title: `Delete ${designation.title}?`,
+      text: "This designation will be removed. This can't be undone.",
+      confirmText: "Delete",
+      tone: "danger",
+    });
 
     if (!confirmed) return;
 
@@ -141,16 +146,8 @@ function Designations({
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">
-            Designations
-          </h1>
-
-          <p className="mt-1 text-sm text-gray-500">
-            Manage your organization's designations.
-          </p>
-        </div>
+      {/* The page title comes from the dashboard shell. */}
+      <div className="flex flex-wrap items-center justify-end gap-4">
 
         {canCreate && (
           <button
@@ -163,7 +160,7 @@ function Designations({
         )}
       </div>
 
-      {error && (
+      {error && !showForm && (
         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
           {error}
         </div>
@@ -175,23 +172,26 @@ function Designations({
         </div>
       )}
 
-      {showForm && (
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold">
-            {selectedDesignation
-              ? "Edit Designation"
-              : "Create Designation"}
-          </h2>
-
-          <DesignationForm
-            key={selectedDesignation?.id ?? "new"}
-            designation={selectedDesignation}
-            onSubmit={handleSubmit}
-            onCancel={() => setShowForm(false)}
-            loading={saving}
-          />
-        </div>
-      )}
+      <Modal
+        open={showForm}
+        title={selectedDesignation ? "Edit designation" : "Add designation"}
+        description="A designation is a job title you can give employees."
+        onClose={() => setShowForm(false)}
+        busy={saving}
+      >
+        {error && (
+          <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+        <DesignationForm
+          key={selectedDesignation?.id ?? "new"}
+          designation={selectedDesignation}
+          onSubmit={handleSubmit}
+          onCancel={() => setShowForm(false)}
+          loading={saving}
+        />
+      </Modal>
 
       <DesignationTable
         designations={designations}

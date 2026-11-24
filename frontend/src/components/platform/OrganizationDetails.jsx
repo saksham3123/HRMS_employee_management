@@ -55,7 +55,7 @@ export default function OrganizationDetails({ organizationId, refreshKey, onClos
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {loading && !organization && <p className="py-6 text-center text-slate-500">Loading…</p>}
 
       {organization && (

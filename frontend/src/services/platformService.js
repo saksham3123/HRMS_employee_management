@@ -7,8 +7,6 @@ const API_BASE_URL = "http://localhost:3000/api/platform";
 const TOKEN_KEY = "platformToken";
 const ADMIN_KEY = "platformAdmin";
 
-export const PLANS = ["free", "basic", "pro", "enterprise"];
-
 const platformRequest = async (endpoint, options = {}) => {
   const token = localStorage.getItem(TOKEN_KEY);
 
@@ -108,6 +106,25 @@ export const updateOrganizationStatus = (id, status) =>
   platformRequest(`/organizations/${id}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
+  });
+
+// ---------- plans ----------
+
+export const listPlans = async () => {
+  const data = await platformRequest("/plans");
+  return data?.plans ?? [];
+};
+
+export const createPlan = (payload) =>
+  platformRequest("/plans", { method: "POST", body: JSON.stringify(payload) });
+
+export const updatePlan = (id, payload) =>
+  platformRequest(`/plans/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+
+export const updatePlanStatus = (id, isActive) =>
+  platformRequest(`/plans/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ is_active: isActive }),
   });
 
 export const updateOrganizationPlan = (id, plan) =>

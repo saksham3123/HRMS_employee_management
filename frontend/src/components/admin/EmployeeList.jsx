@@ -2,6 +2,7 @@ import { useState } from "react";
 import DataTable, { Column } from "datatables.net-react";
 import DtCore from "datatables.net-dt";
 import "datatables.net-dt/css";
+import { confirmAction } from "../../utils/confirmAction";
 
 
 // DataTables requires registering its engine at module scope.
@@ -11,6 +12,13 @@ DataTable.use(DtCore);
 
 
 
+const ROLE_LABELS = {
+  employee: "Employee",
+  manager: "Manager",
+  hr: "HR",
+  admin: "Admin",
+};
+
 // Each row's role editor keeps its own state. DataTables renders a cell once,
 // so state kept in EmployeeList wouldn't reach the cell after it's drawn.
 function RoleEditor({ row, onRoleChange }) {
@@ -19,6 +27,25 @@ function RoleEditor({ row, onRoleChange }) {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    const from = ROLE_LABELS[currentRole] ?? currentRole;
+    const to = ROLE_LABELS[role] ?? role;
+    const confirmed = await confirmAction({
+      title: `Change ${row.name}'s role to ${to}?`,
+      text:
+        role === "admin"
+          ? `${row.name} will go from ${from} to Admin and be able to manage every account, role and record in your organization.`
+          : currentRole === "admin"
+            ? `${row.name} will lose Admin access. Their new role is ${to}.`
+            : `${row.name}'s role will change from ${from} to ${to}, along with what they can see and do.`,
+      confirmText: `Change to ${to}`,
+      tone: role === "admin" || currentRole === "admin" ? "danger" : "primary",
+    });
+
+    if (!confirmed) {
+      setRole(currentRole);
+      return;
+    }
+
     setSaving(true);
     try {
       await onRoleChange(row.employee_id, role, row.id);
@@ -93,10 +120,13 @@ export default function EmployeeList({
       : "—";
 
 
-  const handleDelete = (employee) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to deactivate ${employee.name}'s account?`
-    );
+  const handleDelete = async (employee) => {
+    const confirmed = await confirmAction({
+      title: `Deactivate ${employee.name}?`,
+      text: `${employee.name} won't be able to log in to PeopleDesk until the account is reactivated.`,
+      confirmText: "Deactivate",
+      tone: "danger",
+    });
 
     if (confirmed) {
       onDelete(employee.id);
@@ -108,7 +138,7 @@ export default function EmployeeList({
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-slate-900">
-          Employee Management
+          All employees
         </h2>
 
         <p className="mt-1 text-sm text-slate-500">

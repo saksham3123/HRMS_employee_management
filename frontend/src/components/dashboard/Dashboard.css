@@ -13,11 +13,11 @@ input[type="reset"],
 }
 
 :root {
-    --hrms-ink: #20283d;
-    --hrms-muted: #7d879b;
-    --hrms-border: #e8ebf2;
-    --hrms-bg: #f7f8fc;
-    --hrms-primary: #2563eb;
+    --hrms-ink: #06141b;
+    --hrms-muted: #4a5c6a;
+    --hrms-border: #dde1e1;
+    --hrms-bg: #f4f5f5;
+    --hrms-primary: #11212d;
     --hrms-sidebar: #fff
 }
 
@@ -60,36 +60,69 @@ input[type="reset"],
     width: 39px;
     height: 39px;
     border-radius: 12px;
-    background: #2563eb;
+    background: #11212d;
     color: white;
     font-size: 19px;
-    box-shadow: 0 6px 15px #2563eb33
+    box-shadow: 0 6px 15px #11212d33
 }
 
 .dashq-brand-light {
-    color: #2563eb
+    color: #4a5c6a
 }
 
 .dashq-brand small {
     display: block;
     font-size: 9px;
     letter-spacing: 1.5px;
-    color: #9aa2b3;
+    color: #4a5c6a;
     margin-top: 5px;
     font-weight: 700
 }
 
-.dashq-nav-caption {
-    padding: 0 12px 11px;
-    font-size: 10px;
-    letter-spacing: 1.4px;
-    font-weight: 800;
-    color: #a0a8b8
+/* The organization you are signed in to, under the product name. */
+.dashq-brand .dashq-brand-org {
+    max-width: 170px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    letter-spacing: 0;
+    color: #36495a;
+    font-weight: 600
 }
 
+/* The menu takes the free height and scrolls on its own, so the help card
+   and the account row (with log out) always sit at the bottom of the
+   sidebar, however many items a role has. */
 .dashq-nav {
-    display: grid;
-    gap: 5px
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 0 -6px 12px;
+    padding: 0 6px 4px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #b3bcbd transparent
+}
+
+.dashq-nav::-webkit-scrollbar {
+    width: 6px
+}
+
+.dashq-nav::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #b3bcbd
+}
+
+.dashq-nav::-webkit-scrollbar-thumb:hover {
+    background: #9ba8ab
+}
+
+.dashq-nav-item {
+    flex: none
 }
 
 .dashq-nav-item {
@@ -100,13 +133,24 @@ input[type="reset"],
     width: 100%;
     border: 0;
     background: transparent;
-    color: #7a8499;
+    color: #4a5c6a;
     border-radius: 10px;
     padding: 12px 13px;
     text-align: left;
+    text-decoration: none;
     font-weight: 600;
     font-size: 13px;
     transition: .18s
+}
+
+.dashq-nav-item:focus-visible,
+.dashq-breadcrumb-root:focus-visible,
+.dashq-text-link:focus-visible,
+.dashq-segmented button:focus-visible,
+.dashq-menu-toggle:focus-visible,
+.dashq-logout:focus-visible {
+    outline: 3px solid #4a5c6a;
+    outline-offset: 2px
 }
 
 .dashq-nav-item>i {
@@ -116,13 +160,13 @@ input[type="reset"],
 }
 
 .dashq-nav-item:hover {
-    background: #eff6ff;
-    color: #2563eb
+    background: #e6e9e9;
+    color: #11212d
 }
 
 .dashq-nav-item.active {
-    background: #eff6ff;
-    color: #1d4ed8
+    background: #e6e9e9;
+    color: #11212d
 }
 
 .dashq-active-marker {
@@ -131,16 +175,16 @@ input[type="reset"],
     width: 3px;
     height: 24px;
     border-radius: 4px;
-    background: #2563eb
+    background: #11212d
 }
 
 .dashq-sidebar-bottom {
-    margin-top: auto;
+    flex: none;
     display: flex;
     gap: 10px;
     align-items: flex-start;
-    background: #f8fbff;
-    border: 1px solid #dbeafe;
+    background: #f4f5f5;
+    border: 1px solid #ccd0cf;
     border-radius: 12px;
     padding: 13px 10px;
     margin-bottom: 17px
@@ -153,8 +197,8 @@ input[type="reset"],
     height: 31px;
     flex: none;
     border-radius: 9px;
-    background: #dbeafe;
-    color: #2563eb
+    background: #ccd0cf;
+    color: #11212d
 }
 
 .dashq-sidebar-bottom strong {
@@ -164,11 +208,12 @@ input[type="reset"],
 .dashq-sidebar-bottom p {
     font-size: 10px;
     line-height: 1.45;
-    color: #8992a5;
+    color: #4a5c6a;
     margin: 4px 0 0
 }
 
 .dashq-sidebar-user {
+    flex: none;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -183,8 +228,8 @@ input[type="reset"],
     width: 35px;
     height: 35px;
     border-radius: 50%;
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: #ccd0cf;
+    color: #11212d;
     font-weight: 800
 }
 
@@ -204,14 +249,14 @@ input[type="reset"],
 
 .dashq-user-copy span {
     font-size: 10px;
-    color: #929bad;
+    color: #4a5c6a;
     text-transform: capitalize
 }
 
 .dashq-logout {
     border: 0;
     background: transparent;
-    color: #929bad;
+    color: #4a5c6a;
     font-size: 17px;
     padding: 6px
 }
@@ -239,7 +284,7 @@ input[type="reset"],
     display: flex;
     align-items: center;
     gap: 12px;
-    color: #a0a7b6;
+    color: #4a5c6a;
     font-size: 12px
 }
 
@@ -248,8 +293,19 @@ input[type="reset"],
 }
 
 .dashq-breadcrumb strong {
-    color: #333c52;
+    color: #06141b;
     font-weight: 700
+}
+
+.dashq-breadcrumb-root {
+    color: #36495a;
+    text-decoration: none
+}
+
+.dashq-breadcrumb-root:hover {
+    color: var(--hrms-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px
 }
 
 .dashq-top-actions {
@@ -258,40 +314,12 @@ input[type="reset"],
     gap: 22px
 }
 
-.dashq-status {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    color: #7d8799;
-    font-size: 11px
-}
-
-.dashq-status span,
 .dashq-dot {
     width: 7px;
     height: 7px;
     background: #2fbf8b;
     border-radius: 50%;
     display: inline-block
-}
-
-.dashq-top-icon {
-    position: relative;
-    border: 0;
-    background: transparent;
-    color: #707b90;
-    font-size: 19px
-}
-
-.dashq-top-icon b {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    background: #f28b65;
-    border: 1px solid white;
-    border-radius: 50%;
-    top: 1px;
-    right: 0
 }
 
 .dashq-top-avatar {
@@ -311,7 +339,7 @@ input[type="reset"],
 
 .dashq-top-avatar-button:focus-visible,
 .dashq-account-logout:focus-visible {
-    outline: 3px solid #93c5fd;
+    outline: 3px solid #4a5c6a;
     outline-offset: 3px
 }
 
@@ -349,8 +377,8 @@ input[type="reset"],
     height: 58px;
     margin: 0 auto 13px;
     border-radius: 50%;
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: #ccd0cf;
+    color: #11212d;
     font-size: 22px;
     font-weight: 800
 }
@@ -373,11 +401,18 @@ input[type="reset"],
     display: inline-block;
     padding: 5px 12px;
     border-radius: 999px;
-    background: #eff6ff;
-    color: #1d4ed8;
+    background: #e6e9e9;
+    color: #11212d;
     font-size: 12px;
     font-weight: 700;
     text-transform: capitalize
+}
+
+.dashq-account-org {
+    margin: 12px 0 0;
+    color: #36495a;
+    font-size: 13px;
+    overflow-wrap: anywhere
 }
 
 .dashq-account-logout {
@@ -400,7 +435,7 @@ input[type="reset"],
     border: 0;
     background: transparent;
     font-size: 25px;
-    color: #3a4358
+    color: #1a2c38
 }
 
 .dashq-main-content {
@@ -417,12 +452,18 @@ input[type="reset"],
     margin-bottom: 27px
 }
 
-.dashq-eyebrow {
-    font-size: 10px;
-    letter-spacing: 1.3px;
-    font-weight: 800;
-    color: #9ba3b3;
-    margin-bottom: 10px
+/* Bootstrap's heading sizes are unlayered, so they beat Tailwind's text-*
+   utilities; give card titles inside a page a sensible size here instead. */
+.dashq-main-content h2 {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.35
+}
+
+.dashq-main-content h3 {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4
 }
 
 .dashq-page-heading h1 {
@@ -430,12 +471,12 @@ input[type="reset"],
     font-weight: 800;
     letter-spacing: -.8px;
     margin: 0;
-    color: #252d42
+    color: #06141b
 }
 
 .dashq-page-heading p {
     font-size: 12px;
-    color: #8992a4;
+    color: #4a5c6a;
     margin: 8px 0 0
 }
 
@@ -447,7 +488,7 @@ input[type="reset"],
     border: 1px solid var(--hrms-border);
     padding: 10px 13px;
     border-radius: 9px;
-    color: #737d92;
+    color: #4a5c6a;
     font-size: 11px;
     white-space: nowrap
 }
@@ -465,7 +506,7 @@ input[type="reset"],
     border-radius: 14px;
     padding: 19px 20px;
     min-width: 0;
-    box-shadow: 0 3px 12px #222b4205
+    box-shadow: 0 3px 12px #11212d08
 }
 
 .dashq-stat-icon {
@@ -489,13 +530,13 @@ input[type="reset"],
 }
 
 .dashq-stat-icon.blue {
-    background: #e8f3ff;
-    color: #2563eb
+    background: #e6e9e9;
+    color: #11212d
 }
 
 .dashq-stat-label {
     font-size: 11px;
-    color: #818ba0;
+    color: #4a5c6a;
     font-weight: 600
 }
 
@@ -510,7 +551,7 @@ input[type="reset"],
     display: flex;
     align-items: center;
     gap: 7px;
-    color: #9aa2b2;
+    color: #4a5c6a;
     font-size: 10px;
     margin-top: 12px
 }
@@ -542,108 +583,9 @@ input[type="reset"],
 }
 
 .dashq-panel-heading p {
-    font-size: 11px;
-    color: #8c95a7;
-    margin: 6px 0 0
-}
-
-.dashq-search {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid #e7eaf1;
-    border-radius: 9px;
-    padding: 9px 11px;
-    color: #9aa2b2;
-    min-width: 220px
-}
-
-.dashq-search input {
-    border: 0;
-    outline: 0;
-    min-width: 0;
-    width: 100%;
-    font: inherit;
-    font-size: 11px;
-    color: #333c52
-}
-
-.dashq-module-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 15px
-}
-
-.dashq-module-card {
-    border: 1px solid #e9ecf3;
-    border-radius: 12px;
-    padding: 17px 16px 14px;
-    transition: transform .18s, box-shadow .18s, border-color .18s;
-    min-width: 0
-}
-
-.dashq-module-card:hover {
-    transform: translateY(-2px);
-    border-color: #bfdbfe;
-    box-shadow: 0 8px 22px #242b4c0b
-}
-
-.dashq-module-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px
-}
-
-.dashq-module-icon {
-    display: grid;
-    place-items: center;
-    width: 39px;
-    height: 39px;
-    border-radius: 11px;
-    background: #eff6ff;
-    color: #2563eb;
-    font-size: 18px
-}
-
-.dashq-module-tag {
-    font-size: 9px;
-    color: #8c95a7;
-    background: #f6f7fa;
-    border-radius: 20px;
-    padding: 5px 8px
-}
-
-.dashq-module-card h3 {
     font-size: 13px;
-    font-weight: 800;
-    margin: 17px 0 7px
-}
-
-.dashq-module-card>p {
-    min-height: 32px;
-    font-size: 11px;
-    line-height: 1.55;
-    color: #8a94a7;
-    margin: 0
-}
-
-.dashq-module-bottom {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    border-top: 1px solid #f0f1f5;
-    padding-top: 12px;
-    margin-top: 15px
-}
-
-.dashq-module-bottom>span {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 9px;
-    color: #29a77a
+    color: #36495a;
+    margin: 6px 0 0
 }
 
 .dashq-open-button {
@@ -652,26 +594,26 @@ input[type="reset"],
     gap: 6px;
     border: 0;
     background: transparent;
-    color: #5954d3;
-    font-size: 10px;
-    font-weight: 800;
+    color: var(--hrms-primary);
+    font-size: 12px;
+    font-weight: 700;
     padding: 4px
 }
 
 .dashq-empty-state {
     text-align: center;
     padding: 45px 15px;
-    color: #929bad
+    color: #4a5c6a
 }
 
 .dashq-empty-state>i {
     font-size: 30px;
-    color: #b3b0f0
+    color: #4a5c6a
 }
 
 .dashq-empty-state h3 {
     font-size: 15px;
-    color: #434c60;
+    color: #1a2c38;
     margin: 13px 0 5px
 }
 
@@ -680,13 +622,188 @@ input[type="reset"],
     margin: 0
 }
 
-.dashq-disclaimer {
+/* Overview: one panel per job the signed-in person has today. */
+.dashq-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 17px;
+    align-items: start
+}
+
+.dashq-overview-panel {
+    min-width: 0
+}
+
+.dashq-overview-panel-heading {
     display: flex;
-    gap: 7px;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 15px;
+    margin-bottom: 14px
+}
+
+.dashq-overview-panel-heading h2 {
+    font-size: 16px;
+    font-weight: 800;
+    margin: 0
+}
+
+.dashq-text-link {
+    display: inline-flex;
     align-items: center;
-    color: #9aa2b2;
-    font-size: 10px;
-    margin: 17px 0 0
+    gap: 6px;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: #11212d;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer
+}
+
+.dashq-text-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px
+}
+
+.dashq-overview-lead {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--hrms-ink)
+}
+
+.dashq-overview-lead strong {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums
+}
+
+.dashq-overview-muted {
+    margin: 10px 0 0;
+    font-size: 13px;
+    color: #36495a
+}
+
+.dashq-overview-panel-heading + .dashq-overview-muted {
+    margin-top: 0
+}
+
+.dashq-overview-error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 12px;
+    color: #b42318;
+    font-size: 13px
+}
+
+.dashq-overview-error p {
+    margin: 0
+}
+
+.dashq-overview-actions {
+    margin-top: 16px
+}
+
+.dashq-overview-list {
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 0;
+    border-top: 1px solid var(--hrms-border)
+}
+
+.dashq-overview-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 2px 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--hrms-border);
+    font-size: 13px;
+    color: #36495a;
+    font-variant-numeric: tabular-nums
+}
+
+.dashq-overview-name {
+    min-width: 0;
+    color: var(--hrms-ink);
+    font-weight: 600;
+    overflow-wrap: anywhere
+}
+
+.dashq-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 36px;
+    margin: 0
+}
+
+.dashq-fact dt {
+    font-size: 13px;
+    font-weight: 500;
+    color: #36495a
+}
+
+.dashq-fact dd {
+    margin: 2px 0 0;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--hrms-ink)
+}
+
+.dashq-leave-status {
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+    background: #fffbeb;
+    color: #b45309
+}
+
+.dashq-leave-status.is-approved {
+    background: #f0fdf4;
+    color: #15803d
+}
+
+.dashq-leave-status.is-rejected {
+    background: #fef2f2;
+    color: #b91c1c
+}
+
+.dashq-leave-status.is-cancelled {
+    background: #eceeee;
+    color: #36495a
+}
+
+/* Two-option toggle, e.g. Pending / All on the leave review list. */
+.dashq-segmented {
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid var(--hrms-border);
+    border-radius: 10px;
+    background: #f4f5f5
+}
+
+.dashq-segmented button {
+    border: 0;
+    border-radius: 8px !important;
+    background: transparent;
+    padding: 6px 14px;
+    color: #36495a;
+    font-size: 13px;
+    font-weight: 600
+}
+
+.dashq-segmented button[aria-pressed="true"] {
+    background: #fff;
+    color: #11212d;
+    box-shadow: 0 1px 3px rgb(15 23 42 / 10%)
 }
 
 .dashq-profile-card {
@@ -708,8 +825,8 @@ input[type="reset"],
     height: 56px;
     flex: none;
     border-radius: 50%;
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: #ccd0cf;
+    color: #11212d;
     font-size: 22px;
     font-weight: 800;
 }
@@ -778,7 +895,7 @@ input[type="reset"],
 }
 
 .dashq-profile-button.is-primary:hover:not(:disabled) {
-    background: #1d4ed8;
+    background: #11212d;
 }
 
 .dashq-profile-button.is-secondary {
@@ -788,7 +905,7 @@ input[type="reset"],
 }
 
 .dashq-profile-button.is-secondary:hover:not(:disabled) {
-    background: #f7f8fc;
+    background: #f4f5f5;
 }
 
 .dashq-profile-form {
@@ -819,7 +936,7 @@ input[type="reset"],
 
 .dashq-profile-form input:focus {
     border-color: var(--hrms-primary);
-    outline: 3px solid #2563eb1c;
+    outline: 3px solid #4a5c6a33;
 }
 
 .dashq-profile-actions {
@@ -859,12 +976,19 @@ input[type="reset"],
     display: none
 }
 
+/* Short screens: drop the help card so the menu keeps its room. */
+@media(max-height:720px) {
+    .dashq-sidebar-bottom {
+        display: none
+    }
+}
+
 @media(max-width:1200px) {
-    .dashq-stat-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr))
+    .dashq-overview-grid {
+        grid-template-columns: 1fr
     }
 
-    .dashq-module-grid {
+    .dashq-stat-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr))
     }
 
@@ -881,7 +1005,7 @@ input[type="reset"],
 
     .dashq-sidebar.is-open {
         transform: translateX(0);
-        box-shadow: 15px 0 45px #17213a20
+        box-shadow: 15px 0 45px #06141b20
     }
 
     .dashq-mobile-scrim {
@@ -889,7 +1013,7 @@ input[type="reset"],
         position: fixed;
         inset: 0;
         z-index: 1030;
-        background: #18213b55;
+        background: #06141b66;
         border: 0
     }
 
@@ -909,10 +1033,6 @@ input[type="reset"],
     .dashq-breadcrumb {
         margin-right: auto;
         margin-left: 12px
-    }
-
-    .dashq-status {
-        display: none
     }
 
     .dashq-top-actions {
@@ -957,22 +1077,8 @@ input[type="reset"],
         gap: 18px 14px;
     }
 
-    .dashq-search {
-        width: 100%;
-        min-width: 0
-    }
-
-    .dashq-module-grid {
-        grid-template-columns: 1fr
-    }
-
     .dashq-content-panel {
         padding: 16px
-    }
-
-    .dashq-disclaimer {
-        align-items: flex-start;
-        line-height: 1.5
     }
 }
 
@@ -980,8 +1086,217 @@ input[type="reset"],
     .dashq-stat-grid {
         grid-template-columns: 1fr
     }
+}
+/* ---------- Theme toggle (top bar, next to the account button) ---------- */
+.dashq-theme-toggle {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--hrms-border);
+    border-radius: 50% !important;
+    background: transparent;
+    color: #36495a;
+    font-size: 17px;
+    cursor: pointer;
+    transition: background-color .18s, color .18s, border-color .18s
+}
 
-    .dashq-top-avatar {
-        display: none
-    }
+.dashq-theme-toggle:hover {
+    border-color: #9ba8ab;
+    background: #e6e9e9;
+    color: #11212d
+}
+
+.dashq-theme-toggle:focus-visible {
+    outline: 3px solid #4a5c6a;
+    outline-offset: 2px
+}
+
+/* ---------- Dark theme for the app shell ----------
+   Colours come from the tokens in index.css (:root[data-theme="dark"]). */
+:root[data-theme="dark"] {
+    --hrms-ink: var(--pd-dark-text);
+    --hrms-muted: var(--pd-dark-muted);
+    --hrms-border: var(--pd-dark-border);
+    --hrms-bg: var(--pd-dark-bg);
+    --hrms-primary: var(--pd-dark-accent);
+    --hrms-sidebar: var(--pd-dark-surface)
+}
+
+:root[data-theme="dark"] :is(.dashq-topbar, .dashq-content-panel, .dashq-stat-card, .dashq-account-dropdown, .dashq-date-pill) {
+    background: var(--pd-dark-surface);
+    border-color: var(--pd-dark-border);
+    color: var(--pd-dark-text)
+}
+
+:root[data-theme="dark"] :is(.dashq-page-heading h1, .dashq-panel-heading h2, .dashq-overview-panel-heading h2,
+    .dashq-breadcrumb strong, .dashq-account-dropdown h2, .dashq-user-copy strong, .dashq-overview-lead,
+    .dashq-overview-name, .dashq-fact dd, .dashq-stat-value, .dashq-profile-header h2, .dashq-profile-field strong,
+    .dashq-empty-state h3, .dashq-sidebar-bottom strong, .dashq-main-content h2, .dashq-main-content h3) {
+    color: var(--pd-dark-text)
+}
+
+:root[data-theme="dark"] :is(.dashq-page-heading p, .dashq-panel-heading p, .dashq-breadcrumb, .dashq-breadcrumb-root,
+    .dashq-brand-org, .dashq-user-copy span, .dashq-logout, .dashq-nav-item, .dashq-overview-muted, .dashq-overview-list li,
+    .dashq-fact dt, .dashq-stat-label, .dashq-stat-foot, .dashq-sidebar-bottom p, .dashq-account-email, .dashq-account-org,
+    .dashq-empty-state, .dashq-profile-header p, .dashq-profile-field span, .dashq-menu-toggle) {
+    color: var(--pd-dark-muted)
+}
+
+:root[data-theme="dark"] .dashq-brand {
+    color: var(--pd-dark-text)
+}
+
+:root[data-theme="dark"] .dashq-brand-mark {
+    background: var(--pd-dark-accent);
+    color: var(--pd-dark-bg);
+    box-shadow: none
+}
+
+:root[data-theme="dark"] .dashq-brand-light {
+    color: #9ba8ab
+}
+
+:root[data-theme="dark"] :is(.dashq-nav-item:hover, .dashq-nav-item.active) {
+    background: var(--pd-dark-raised);
+    color: var(--pd-dark-accent)
+}
+
+:root[data-theme="dark"] .dashq-active-marker {
+    background: var(--pd-dark-accent)
+}
+
+:root[data-theme="dark"] .dashq-sidebar-bottom {
+    background: var(--pd-dark-raised);
+    border-color: var(--pd-dark-border)
+}
+
+:root[data-theme="dark"] :is(.dashq-help-icon, .dashq-avatar, .dashq-top-avatar, .dashq-account-avatar, .dashq-profile-avatar, .dashq-account-role) {
+    background: var(--pd-dark-raised);
+    color: var(--pd-dark-accent)
+}
+
+:root[data-theme="dark"] :is(.dashq-text-link, .dashq-open-button) {
+    color: var(--pd-dark-accent)
+}
+
+:root[data-theme="dark"] :is(.dashq-overview-list, .dashq-overview-list li) {
+    border-color: var(--pd-dark-border)
+}
+
+:root[data-theme="dark"] .dashq-segmented {
+    background: var(--pd-dark-bg);
+    border-color: var(--pd-dark-border)
+}
+
+:root[data-theme="dark"] .dashq-segmented button {
+    color: var(--pd-dark-muted)
+}
+
+:root[data-theme="dark"] .dashq-segmented button[aria-pressed="true"] {
+    background: var(--pd-dark-raised);
+    color: var(--pd-dark-accent);
+    box-shadow: none
+}
+
+:root[data-theme="dark"] .dashq-leave-status {
+    background: rgb(245 158 11 / 16%);
+    color: #fcd34d
+}
+
+:root[data-theme="dark"] .dashq-leave-status.is-approved {
+    background: rgb(34 197 94 / 16%);
+    color: #86efac
+}
+
+:root[data-theme="dark"] .dashq-leave-status.is-rejected {
+    background: rgb(239 68 68 / 16%);
+    color: #fca5a5
+}
+
+:root[data-theme="dark"] .dashq-leave-status.is-cancelled {
+    background: var(--pd-dark-raised);
+    color: var(--pd-dark-muted)
+}
+
+:root[data-theme="dark"] .dashq-stat-icon.blue {
+    background: var(--pd-dark-raised);
+    color: var(--pd-dark-accent)
+}
+
+:root[data-theme="dark"] .dashq-profile-message.is-error {
+    border-color: rgb(239 68 68 / 35%);
+    background: rgb(239 68 68 / 14%);
+    color: #fca5a5
+}
+
+:root[data-theme="dark"] .dashq-profile-message.is-success {
+    border-color: rgb(34 197 94 / 35%);
+    background: rgb(34 197 94 / 14%);
+    color: #86efac
+}
+
+:root[data-theme="dark"] .dashq-profile-button.is-primary {
+    background: var(--pd-dark-accent);
+    color: var(--pd-dark-bg)
+}
+
+:root[data-theme="dark"] .dashq-profile-button.is-secondary {
+    background: transparent;
+    color: var(--pd-dark-text)
+}
+
+:root[data-theme="dark"] .dashq-theme-toggle {
+    color: var(--pd-dark-accent)
+}
+
+:root[data-theme="dark"] .dashq-theme-toggle:hover {
+    border-color: #4a5c6a;
+    background: var(--pd-dark-raised);
+    color: var(--pd-dark-accent)
+}
+
+:root[data-theme="dark"] .dashq-nav {
+    scrollbar-color: #4a5c6a transparent
+}
+
+:root[data-theme="dark"] .dashq-mobile-scrim {
+    background: rgb(3 10 14 / 72%)
+}
+
+/* DataTables (employee and company tables). */
+:root[data-theme="dark"] table.dataTable,
+:root[data-theme="dark"] .dt-container {
+    color: var(--pd-dark-text)
+}
+
+:root[data-theme="dark"] table.dataTable > tbody > tr,
+:root[data-theme="dark"] table.dataTable > tbody > tr > * {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    color: var(--pd-dark-text);
+    border-color: var(--pd-dark-border) !important
+}
+
+:root[data-theme="dark"] table.dataTable > thead > tr > *,
+:root[data-theme="dark"] table.dataTable > tfoot > tr > * {
+    border-color: var(--pd-dark-border) !important;
+    color: var(--pd-dark-text)
+}
+
+:root[data-theme="dark"] .dt-container :is(.dt-search input, .dt-length select) {
+    border-color: var(--pd-dark-border);
+    background: var(--pd-dark-raised);
+    color: var(--pd-dark-text)
+}
+
+:root[data-theme="dark"] .dt-container .dt-paging .dt-paging-button {
+    color: var(--pd-dark-muted) !important
+}
+
+:root[data-theme="dark"] .dt-container .dt-paging .dt-paging-button.current {
+    border-color: var(--pd-dark-border) !important;
+    background: var(--pd-dark-raised) !important;
+    color: var(--pd-dark-accent) !important
 }

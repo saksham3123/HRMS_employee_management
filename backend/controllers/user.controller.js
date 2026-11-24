@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import prisma from "../config/prisma.js";
+import { getToday } from "../config/time.js";
 
 export const loginUser = async (req, res) => {
 
@@ -23,6 +24,7 @@ export const loginUser = async (req, res) => {
                 email: true,
                 password: true,
                 is_active: true,
+                organization: { select: { id: true, name: true } },
                 user_roles: {
                     select: {
                         roles: {
@@ -106,6 +108,7 @@ export const loginUser = async (req, res) => {
                 email: user.email,
                 role,
                 permissions,
+                organization: user.organization,
             },
         });
 
@@ -120,11 +123,8 @@ export const loginUser = async (req, res) => {
 
 }
 
-// "Today" according to PostgreSQL (CURRENT_DATE), as a UTC-midnight Date.
-const getDbToday = async (db) => {
-    const [{ today }] = await db.$queryRaw`SELECT CURRENT_DATE::text AS today`;
-    return new Date(`${today}T00:00:00.000Z`);
-};
+// "Today" in the company's timezone, as a UTC-midnight Date.
+const getDbToday = (db) => getToday(db);
 
 export const registerUser = async (req, res) => {
     try {
@@ -155,8 +155,10 @@ export const registerUser = async (req, res) => {
 
         // Everything below runs in one transaction: if any step fails,
         // no user, employee or role row is left behind.
-        const result = await prisma.$transaction(async (tx) => {
-            const existingUser = await tx.users.findFirst({
+        // Emails are unique across every company (one email, one login),
+        // so this check deliberately uses the unscoped client.
+        const result = await req.db.$transaction(async (tx) => {
+            const existingUser = await prisma.users.findFirst({
                 where: { email: { equals: normalizedEmail, mode: "insensitive" } },
                 select: { id: true },
             });
@@ -233,7 +235,7 @@ export const registerUser = async (req, res) => {
 export const getProfile = async (req, res) => {
     try {
 
-        const user = await prisma.users.findUnique({
+        const user = await req.db.users.findUnique({
             where: { id: req.user.userId },
             select: {
                 id: true,
@@ -341,7 +343,7 @@ export const updateProfile = async (req, res) => {
         if (name !== undefined) data.name = name.trim();
         if (email !== undefined) data.email = email.trim();
 
-        const user = await prisma.users.update({
+        const user = await req.db.users.update({
             where: { id: userId },
             data,
             select: { id: true, name: true, email: true },
@@ -386,7 +388,7 @@ export const updateProfile = async (req, res) => {
 
 export const getAllUsers = async (req, res) => {
     try {
-        const records = await prisma.users.findMany({
+        const records = await req.db.users.findMany({
             orderBy: { created_at: "desc" },
             select: {
                 id: true,
@@ -471,9 +473,9 @@ export const deleteUser = async (req, res) => {
             });
         }
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await req.db.$transaction(async (tx) => {
             // Lock the user row for the rest of the transaction (old: FOR UPDATE).
-            await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`;
+            await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} AND organization_id = ${req.user.organizationId} FOR UPDATE`;
 
             const user = await tx.users.findUnique({
                 where: { id: userId },
@@ -611,12 +613,13 @@ export const updateEmployee = async (req, res) => {
 
         const id = Number(employeeId);
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await req.db.$transaction(async (tx) => {
             // Lock the employee row (old: SELECT ... FOR UPDATE).
             const [employee] = await tx.$queryRaw`
                 SELECT id, user_id
                 FROM employees
                 WHERE id = ${id}
+                  AND organization_id = ${req.user.organizationId}
                 FOR UPDATE`;
 
             if (!employee) {

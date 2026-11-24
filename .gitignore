@@ -27,3 +27,17 @@ Claude outputs/
 *.dump
 *.sql.gz
 hrms_backup_*
+
+
+
+# AI coding tool folders (skills, hooks, local config)
+.agent/
+.agents/
+.claude/
+.codex/
+.gemini/
+.impeccable/
+.windsurf/
+skills-lock.json
+
+PRODUCT.md

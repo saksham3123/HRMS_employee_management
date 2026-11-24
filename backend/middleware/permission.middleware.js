@@ -1,5 +1,23 @@
 import prisma from "../config/prisma.js";
 
+// Does this active user have a role that grants permissionKey?
+export const userHasPermission = async (userId, permissionKey) => {
+    const match = await prisma.user_roles.findFirst({
+        where: {
+            user_id: userId,
+            users: { is_active: true },
+            roles: {
+                role_permissions: {
+                    some: { permissions: { permission_key: permissionKey } },
+                },
+            },
+        },
+        select: { user_id: true },
+    });
+
+    return Boolean(match);
+};
+
 const requirePermission = (permissionKey) => {
     return async (req, res, next) => {
         try {
@@ -9,22 +27,8 @@ const requirePermission = (permissionKey) => {
                 });
             }
 
-            // Does this active user have a role that grants permissionKey?
-            const match = await prisma.user_roles.findFirst({
-                where: {
-                    user_id: req.user.userId,
-                    users: { is_active: true },
-                    roles: {
-                        role_permissions: {
-                            some: { permissions: { permission_key: permissionKey } },
-                        },
-                    },
-                },
-                select: { user_id: true },
-            });
-
             // User doesn't have the required permission.
-            if (!match) {
+            if (!(await userHasPermission(req.user.userId, permissionKey))) {
                 return res.status(403).json({
                     message: "You do not have permission to perform this action",
                 });

@@ -1,4 +1,6 @@
+import { useState } from "react";
 import EmployeeList from "../admin/EmployeeList";
+import Modal from "../common/Modal";
 import CreateEmployeeForm from "../admin/CreateEmployeeForm";
 import AdminAttendanceOverview from "../attendance/AdminAttendanceOverview";
 import MonthlyPayrollTable from "../admin/MonthlyPayrollTable";
@@ -35,14 +37,30 @@ export default function DashboardModuleContent({
   fetchMyAttendance,
   attendanceHistory,
 }) {
-  if (activeModule === "team" && user?.role === "manager") {
+  const [showCreateEmployee, setShowCreateEmployee] = useState(false);
+  const canCreateEmployee = user?.role === "admin" && hasPermission("users.create");
+
+  // Access to each module is checked once, in pages/Dashboard.jsx, using
+  // dashboardModules.js. Checks below only decide what's inside a module.
+  if (activeModule === "team") {
     return <ManagerTeam />;
   }
 
   if (activeModule === "employees") {
     return (
       <div className="space-y-8">
-        {employeeError && (
+        {canCreateEmployee && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowCreateEmployee(true)}
+              className="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+            >
+              + Add employee
+            </button>
+          </div>
+        )}
+        {employeeError && !showCreateEmployee && (
           <p
             role="alert"
             className="rounded-lg bg-red-50 p-4 text-sm text-red-700"
@@ -58,12 +76,20 @@ export default function DashboardModuleContent({
             {employeeSuccess}
           </p>
         )}
-        {user?.role === "admin" && hasPermission("users.create") && (
+        <Modal
+          open={showCreateEmployee}
+          title="Add employee"
+          description="Creates their login and employee record. Share the temporary password with them securely."
+          onClose={() => setShowCreateEmployee(false)}
+          busy={creatingEmployee}
+        >
           <CreateEmployeeForm
             onCreate={onCreateEmployee}
+            onCreated={() => setShowCreateEmployee(false)}
+            onCancel={() => setShowCreateEmployee(false)}
             creating={creatingEmployee}
           />
-        )}
+        </Modal>
         <EmployeeList
           employees={employees}
           loading={employeesLoading}
@@ -103,12 +129,10 @@ export default function DashboardModuleContent({
   }
 
   if (activeModule === "managers") {
-    const canViewManagers =
-      hasPermission("users.view") && hasPermission("employees.view");
     const canManageManagers = hasPermission("employees.update");
     return (
       <ManagerAssignment
-        canView={canViewManagers}
+        canView
         canCreate={canManageManagers}
         canEdit={canManageManagers}
         canDelete={canManageManagers}
@@ -145,7 +169,7 @@ export default function DashboardModuleContent({
     );
   }
 
-  if (activeModule === "myAttendance" && user?.role === "employee") {
+  if (activeModule === "myAttendance") {
     return (
       <div className="space-y-8">
         {myAttendanceError && (

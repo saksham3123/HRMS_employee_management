@@ -1,22 +1,29 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Navigate, useParams } from "react-router-dom";
 import PlatformLayout from "../../components/platform/PlatformLayout";
 import PlatformOverview from "../../components/platform/PlatformOverview";
 import OrganizationsTable from "../../components/platform/OrganizationsTable";
 import OrganizationDetails from "../../components/platform/OrganizationDetails";
 import CreateOrganizationForm from "../../components/platform/CreateOrganizationForm";
+import PlansManager from "../../components/platform/PlansManager";
+import Modal from "../../components/common/Modal";
 import {
   createOrganization,
   getOverview,
   getPlatformAdmin,
   listOrganizations,
+  listPlans,
 } from "../../services/platformService";
 
 export default function PlatformDashboard() {
   const admin = getPlatformAdmin();
 
-  const [activeItem, setActiveItem] = useState("overview");
+  // The section lives in the URL (/platform/companies) so refresh and Back work.
+  const { section = "overview" } = useParams();
+  const activeItem = section;
   const [overview, setOverview] = useState(null);
   const [organizations, setOrganizations] = useState([]);
+  const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -26,15 +33,18 @@ export default function PlatformDashboard() {
   const [selectedId, setSelectedId] = useState(null);
   // Bumped after every change so the details panel reloads too.
   const [refreshKey, setRefreshKey] = useState(0);
+  const detailsRef = useRef(null);
 
   // Reload the numbers and the company list together.
   const loadData = useCallback(async () => {
     try {
-      const [overviewData, organizationList] = await Promise.all([
+      const [overviewData, organizationList, planList] = await Promise.all([
         getOverview(),
         listOrganizations(),
+        listPlans(),
       ]);
       setOverview(overviewData);
+      setPlans(planList);
       setOrganizations(organizationList);
       setRefreshKey((key) => key + 1);
     } catch (err) {
@@ -48,11 +58,23 @@ export default function PlatformDashboard() {
     loadData();
   }, [loadData]);
 
-  const handleNavigate = (key) => {
-    setActiveItem(key);
+  // Messages belong to the page they were shown on: clear them when the
+  // section changes (adjusting state during render, not in an effect).
+  const [messageSection, setMessageSection] = useState(section);
+  if (messageSection !== section) {
+    setMessageSection(section);
     setError("");
     setSuccess("");
-  };
+  }
+
+  // The details panel opens above the table; bring it into view, since the
+  // row that opened it may be far down the page.
+  useEffect(() => {
+    if (selectedId) {
+      detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      detailsRef.current?.focus({ preventScroll: true });
+    }
+  }, [selectedId]);
 
   const handleCreate = async (payload) => {
     setSaving(true);
@@ -79,8 +101,12 @@ export default function PlatformDashboard() {
     await loadData();
   }, [loadData]);
 
+  if (!["overview", "companies", "plans"].includes(section)) {
+    return <Navigate to="/platform" replace />;
+  }
+
   return (
-    <PlatformLayout activeItem={activeItem} onNavigate={handleNavigate}>
+    <PlatformLayout activeItem={activeItem}>
       {activeItem === "overview" && (
         <PlatformOverview
           admin={admin}
@@ -88,7 +114,7 @@ export default function PlatformDashboard() {
           organizations={organizations}
           loading={loading}
           error={error}
-          onOpenCompanies={() => handleNavigate("companies")}
+
         />
       )}
 
@@ -96,7 +122,6 @@ export default function PlatformDashboard() {
         <>
           <div className="dashq-page-heading">
             <div>
-              <div className="dashq-eyebrow">PLATFORM / COMPANIES</div>
               <h1>Companies</h1>
               <p>Create companies, change plans and suspend or reactivate accounts.</p>
             </div>
@@ -115,39 +140,46 @@ export default function PlatformDashboard() {
             )}
           </div>
 
-          {error && (
+          {error && !showCreateForm && (
             <p role="alert" className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </p>
           )}
           {success && (
-            <p className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
+            <p role="status" className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
               {success}
             </p>
           )}
 
-          {showCreateForm && (
-            <section className="dashq-content-panel">
-              <div className="dashq-panel-heading">
-                <div>
-                  <h2>New company</h2>
-                  <p>Creates the company, its first admin and default leave types.</p>
-                </div>
-              </div>
-              <CreateOrganizationForm
-                onSubmit={handleCreate}
-                onCancel={() => setShowCreateForm(false)}
-                saving={saving}
-              />
-            </section>
-          )}
+          <Modal
+            open={showCreateForm}
+            title="New company"
+            description="Creates the company, its first admin and default leave types."
+            onClose={() => setShowCreateForm(false)}
+            busy={saving}
+            size="lg"
+          >
+            {error && (
+              <p role="alert" className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+            <CreateOrganizationForm
+              plans={plans.filter((plan) => plan.is_active)}
+              onSubmit={handleCreate}
+              onCancel={() => setShowCreateForm(false)}
+              saving={saving}
+            />
+          </Modal>
 
           {selectedId && (
+            <div ref={detailsRef} tabIndex={-1} className="mb-6 outline-none">
             <OrganizationDetails
               organizationId={selectedId}
               refreshKey={refreshKey}
               onClose={() => setSelectedId(null)}
             />
+            </div>
           )}
 
           <section className="dashq-content-panel">
@@ -163,6 +195,7 @@ export default function PlatformDashboard() {
             ) : (
               <OrganizationsTable
                 organizations={organizations}
+                plans={plans.filter((plan) => plan.is_active)}
                 onChanged={handleTableChanged}
                 onView={setSelectedId}
                 onError={setError}
@@ -170,6 +203,9 @@ export default function PlatformDashboard() {
             )}
           </section>
         </>
+      )}
+      {activeItem === "plans" && (
+        <PlansManager plans={plans} loading={loading} onChanged={loadData} />
       )}
     </PlatformLayout>
   );

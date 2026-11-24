@@ -1,27 +1,27 @@
-import prisma from "../config/prisma.js";
 import { createsReportingCycle } from "../helpers/reporting.helper.js";
+import { getToday } from "../config/time.js";
 
 // All IDs in this file are employees.id (NOT users.id), except
 // getManagerTeam, which finds the manager from the logged-in user.
 
 const isValidId = (id) => Number.isInteger(Number(id)) && Number(id) > 0;
 
-// "Today" according to PostgreSQL (CURRENT_DATE), as a UTC-midnight Date.
-const getDbToday = async (db) => {
-  const [{ today }] = await db.$queryRaw`SELECT CURRENT_DATE::text AS today`;
-  return new Date(`${today}T00:00:00.000Z`);
-};
+// "Today" in the company's timezone, as a UTC-midnight Date.
+const getDbToday = (db) => getToday(db);
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Locks both employee rows for the rest of the transaction (same as the old
 // SELECT ... FOR UPDATE), so two admins can't create a cycle at the same time.
 // Returns how many of the two employees exist.
-const lockEmployees = async (tx, employeeId, managerId) => {
+// Raw SQL isn't scoped by config/tenant.js, so filter by company here: an
+// employee from another company counts as not found.
+const lockEmployees = async (tx, organizationId, employeeId, managerId) => {
   const rows = await tx.$queryRaw`
     SELECT id
     FROM employees
     WHERE id IN (${employeeId}, ${managerId})
+      AND organization_id = ${organizationId}
     FOR UPDATE`;
 
   return rows.length;
@@ -47,8 +47,8 @@ export const assignReportingManager = async (req, res) => {
   try {
     // The transaction returns { status, body }; any early return simply ends
     // it (nothing was written), and a thrown error rolls it back.
-    const { status, body } = await prisma.$transaction(async (tx) => {
-      if ((await lockEmployees(tx, employeeId, managerId)) !== 2) {
+    const { status, body } = await req.db.$transaction(async (tx) => {
+      if ((await lockEmployees(tx, req.user.organizationId, employeeId, managerId)) !== 2) {
         return {
           status: 404,
           body: { message: "Employee or reporting manager not found." },
@@ -76,11 +76,11 @@ export const assignReportingManager = async (req, res) => {
         };
       }
 
-      // effective_from is filled by the database default (CURRENT_DATE).
       const reporting = await tx.employee_reporting.create({
         data: {
           employee_id: employeeId,
           manager_employee_id: managerId,
+          effective_from: await getDbToday(tx),
         },
       });
 
@@ -121,8 +121,8 @@ export const updateReportingManager = async (req, res) => {
   }
 
   try {
-    const { status, body } = await prisma.$transaction(async (tx) => {
-      if ((await lockEmployees(tx, employeeId, managerId)) !== 2) {
+    const { status, body } = await req.db.$transaction(async (tx) => {
+      if ((await lockEmployees(tx, req.user.organizationId, employeeId, managerId)) !== 2) {
         return {
           status: 404,
           body: { message: "Employee or reporting manager not found." },
@@ -134,6 +134,7 @@ export const updateReportingManager = async (req, res) => {
         SELECT id, manager_employee_id, effective_from::text AS effective_from
         FROM employee_reporting
         WHERE employee_id = ${employeeId}
+          AND organization_id = ${req.user.organizationId}
           AND effective_to IS NULL
         FOR UPDATE`;
 
@@ -217,7 +218,7 @@ export const getReportingManager = async (req, res) => {
   }
 
   try {
-    const employee = await prisma.employees.findUnique({
+    const employee = await req.db.employees.findUnique({
       where: { id: employeeId },
       select: {
         id: true,
@@ -281,9 +282,9 @@ export const removeReportingManager = async (req, res) => {
   }
 
   try {
-    const today = await getDbToday(prisma);
+    const today = await getDbToday(req.db);
 
-    const [reporting] = await prisma.employee_reporting.updateManyAndReturn({
+    const [reporting] = await req.db.employee_reporting.updateManyAndReturn({
       where: {
         employee_id: employeeId,
         effective_to: null,
@@ -320,7 +321,7 @@ export const getManagerTeam = async (req, res) => {
   }
 
   try {
-    const assignments = await prisma.employee_reporting.findMany({
+    const assignments = await req.db.employee_reporting.findMany({
       where: {
         effective_to: null,
         manager: { user_id: req.user.userId },

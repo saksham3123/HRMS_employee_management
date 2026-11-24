@@ -1,9 +1,8 @@
-import prisma from "../config/prisma.js";
 
 const userValidation = async (req, res, next) => {
   try {
     // users.id -> employees.id (they are different values).
-    const employee = await prisma.employees.findUnique({
+    const employee = await req.db.employees.findUnique({
       where: { user_id: req.user.userId },
       select: { id: true },
     });

@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 // Overview page: headline numbers + most recent companies.
 export default function PlatformOverview({
   admin,
@@ -5,7 +7,6 @@ export default function PlatformOverview({
   organizations,
   loading,
   error,
-  onOpenCompanies,
 }) {
   const stats = [
     {
@@ -48,7 +49,6 @@ export default function PlatformOverview({
     <>
       <div className="dashq-page-heading">
         <div>
-          <div className="dashq-eyebrow">PLATFORM / OVERVIEW</div>
           <h1>Welcome back, {admin?.name?.split(" ")[0] || "there"}!</h1>
           <p>Here’s how PeopleDesk is doing across all companies.</p>
         </div>
@@ -89,9 +89,9 @@ export default function PlatformOverview({
             <h2>Recently added companies</h2>
             <p>The five newest companies on the platform.</p>
           </div>
-          <button type="button" className="dashq-open-button" onClick={onOpenCompanies}>
-            Manage companies <i className="bi bi-arrow-up-right" />
-          </button>
+          <Link to="/platform/companies" className="dashq-text-link">
+            Manage companies <i className="bi bi-arrow-right" aria-hidden="true" />
+          </Link>
         </div>
 
         {loading ? (

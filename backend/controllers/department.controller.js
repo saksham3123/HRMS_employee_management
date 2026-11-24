@@ -1,4 +1,3 @@
-import prisma from "../config/prisma.js";
 
 // Prisma error codes
 // P2002 -> unique constraint failed (duplicate name)
@@ -27,7 +26,7 @@ const normalizeDescription = (description) =>
 
 export const getDepartments = async (req, res) => {
     try {
-        const departments = await prisma.departments.findMany({
+        const departments = await req.db.departments.findMany({
             orderBy: { name: "asc" },
             include: { _count: { select: { employees: true } } },
         });
@@ -59,7 +58,7 @@ export const getDepartmentById = async (req, res) => {
             });
         }
 
-        const department = await prisma.departments.findUnique({
+        const department = await req.db.departments.findUnique({
             where: { id: Number(id) },
             include: { _count: { select: { employees: true } } },
         });
@@ -100,7 +99,7 @@ export const createDepartment = async (req, res) => {
             });
         }
 
-        const department = await prisma.departments.create({
+        const department = await req.db.departments.create({
             data: {
                 name: name.trim(),
                 description: normalizeDescription(description),
@@ -151,7 +150,7 @@ export const updateDepartment = async (req, res) => {
             });
         }
 
-        const department = await prisma.departments.update({
+        const department = await req.db.departments.update({
             where: { id: Number(id) },
             data: {
                 name: name.trim(),
@@ -196,7 +195,7 @@ export const deleteDepartment = async (req, res) => {
             });
         }
 
-        const department = await prisma.departments.findUnique({
+        const department = await req.db.departments.findUnique({
             where: { id: Number(id) },
             select: { id: true, name: true },
         });
@@ -209,7 +208,7 @@ export const deleteDepartment = async (req, res) => {
 
         // Deletes only when no employee is assigned, in a single query,
         // so an employee assigned in between can't be silently unlinked.
-        const { count } = await prisma.departments.deleteMany({
+        const { count } = await req.db.departments.deleteMany({
             where: {
                 id: Number(id),
                 employees: { none: {} },

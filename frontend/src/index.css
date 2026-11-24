@@ -1,9 +1,414 @@
 @import "tailwindcss";
 
+/* PeopleDesk palette (both themes): #06141B · #11212D · #253745 · #4A5C6A ·
+   #9BA8AB · #CCD0CF. In the light theme white and tints of #CCD0CF carry
+   most surfaces; the two darkest are kept for primary actions, the brand
+   mark, headings and body text.
+   Tailwind's blue / slate / gray scales are remapped onto the palette so
+   every bg-blue-600, text-slate-500 etc. in the app follows it. */
+@theme {
+  --color-blue-50: #f4f5f5;
+  --color-blue-100: #e6e9e9;
+  --color-blue-200: #ccd0cf;
+  --color-blue-300: #b3bcbd;
+  --color-blue-400: #9ba8ab;
+  --color-blue-500: #4a5c6a;
+  --color-blue-600: #11212d;
+  --color-blue-700: #0b1a23;
+  --color-blue-800: #081720;
+  --color-blue-900: #06141b;
+  --color-blue-950: #030c10;
+
+  --color-slate-50: #f6f7f7;
+  --color-slate-100: #eceeee;
+  --color-slate-200: #dde1e1;
+  --color-slate-300: #c3cacb;
+  --color-slate-400: #5c6d78;
+  --color-slate-500: #4a5c6a;
+  --color-slate-600: #36495a;
+  --color-slate-700: #253745;
+  --color-slate-800: #1a2c38;
+  --color-slate-900: #06141b;
+  --color-slate-950: #030c10;
+
+  --color-gray-50: #f6f7f7;
+  --color-gray-100: #eceeee;
+  --color-gray-200: #dde1e1;
+  --color-gray-300: #c3cacb;
+  --color-gray-400: #5c6d78;
+  --color-gray-500: #4a5c6a;
+  --color-gray-600: #36495a;
+  --color-gray-700: #253745;
+  --color-gray-800: #1a2c38;
+  --color-gray-900: #06141b;
+}
+
+
 button:not(.dashq-mobile-scrim),
 input[type="button"],
 input[type="submit"],
 input[type="reset"],
 [role="button"] {
   border-radius: 12px !important;
+}
+
+/* Confirmation dialogs (utils/confirmAction.js), in the dashboard's palette. */
+.pd-swal-popup {
+  width: min(440px, calc(100vw - 32px));
+  padding: 28px 24px 22px;
+  border-radius: 16px;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #06141b;
+}
+
+.pd-swal-popup .swal2-icon {
+  margin-top: 4px;
+  transform: scale(0.8);
+}
+
+.pd-swal-title {
+  padding: 0;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: #06141b;
+}
+
+.pd-swal-text {
+  margin-top: 10px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #36495a;
+}
+
+.pd-swal-actions {
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.pd-swal-button {
+  min-height: 42px;
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pd-swal-button:focus-visible {
+  outline: 3px solid #4a5c6a;
+  outline-offset: 2px;
+}
+
+/* !important: the DashQ template forces .swal2-confirm to Bootstrap blue
+   with !important (public/dashq-assets/css/styles.css). */
+.pd-swal-popup .pd-swal-actions .pd-swal-button.is-primary {
+  background: #11212d !important;
+  color: #fff;
+}
+
+.pd-swal-popup .pd-swal-actions .pd-swal-button.is-primary:hover {
+  background: #0b1a23 !important;
+}
+
+.pd-swal-popup .pd-swal-actions .pd-swal-button.is-danger {
+  background: #dc2626 !important;
+  color: #fff;
+}
+
+.pd-swal-popup .pd-swal-actions .pd-swal-button.is-danger:hover {
+  background: #b91c1c !important;
+}
+
+.pd-swal-popup .pd-swal-actions .pd-swal-button.is-secondary {
+  border-color: #c3cacb;
+  background: #fff !important;
+  color: #06141b;
+}
+
+.pd-swal-popup .pd-swal-actions .pd-swal-button.is-secondary:hover {
+  background: #f4f5f5 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pd-swal-popup,
+  .swal2-container {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+/* Pop-up forms (components/common/Modal.jsx). */
+.pd-modal {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: #fff;
+  color: #06141b;
+  box-shadow: 0 24px 60px -12px rgb(15 23 42 / 35%);
+  overflow: hidden;
+}
+
+.pd-modal.is-lg {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.pd-modal::backdrop {
+  background: rgb(15 23 42 / 45%);
+}
+
+.pd-modal[open] {
+  animation: pd-modal-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pd-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+.pd-modal-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 48px);
+}
+
+.pd-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid #dde1e1;
+}
+
+.pd-modal .pd-modal-head h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.3;
+  color: #06141b;
+}
+
+.pd-modal-head p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #36495a;
+}
+
+.pd-modal-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px !important;
+  background: transparent;
+  color: #36495a;
+  cursor: pointer;
+}
+
+.pd-modal-close:hover {
+  background: #e6e9e9;
+  color: #06141b;
+}
+
+.pd-modal-close:focus-visible {
+  outline: 3px solid #4a5c6a;
+  outline-offset: 2px;
+}
+
+.pd-modal-close:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pd-modal-body {
+  padding: 20px 24px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pd-modal[open] {
+    animation: none;
+  }
+}
+
+/* ---------- Dark theme ----------
+   <html data-theme="dark"> (src/hooks/useTheme.js). Palette: #06141B
+   #11212D #253745 #4A5C6A #9BA8AB #CCD0CF. The darkest two carry the page
+   and panels; #CCD0CF is kept for text and the few accents (primary
+   buttons, active states, links); #4A5C6A only for borders. The public landing pages keep their own light look. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --pd-dark-bg: #06141b;
+  --pd-dark-surface: #11212d;
+  --pd-dark-raised: #253745;
+  --pd-dark-border: #253745;
+  --pd-dark-text: #ccd0cf;
+  --pd-dark-muted: #9ba8ab;
+  --pd-dark-accent: #ccd0cf;
+
+  /* Tailwind scales, flipped so light tints become dark ones and dark
+     text becomes light text. */
+  --color-slate-50: #182a37;
+  --color-slate-100: #1e3140;
+  --color-slate-200: #253745;
+  --color-slate-300: #4a5c6a;
+  --color-slate-400: #9ba8ab;
+  --color-slate-500: #9ba8ab;
+  --color-slate-600: #b3bcbd;
+  --color-slate-700: #ccd0cf;
+  --color-slate-800: #ccd0cf;
+  --color-slate-900: #e4e7e6;
+  --color-slate-950: #f1f3f2;
+  --color-gray-50: #182a37;
+  --color-gray-100: #1e3140;
+  --color-gray-200: #253745;
+  --color-gray-300: #4a5c6a;
+  --color-gray-400: #9ba8ab;
+  --color-gray-500: #9ba8ab;
+  --color-gray-600: #b3bcbd;
+  --color-gray-700: #ccd0cf;
+  --color-gray-800: #ccd0cf;
+  --color-gray-900: #e4e7e6;
+
+  --color-blue-50: #182a37;
+  --color-blue-100: #1e3140;
+  --color-blue-200: #253745;
+  --color-blue-300: #4a5c6a;
+  --color-blue-400: #6f8088;
+  --color-blue-500: #9ba8ab;
+  --color-blue-600: #ccd0cf;
+  --color-blue-700: #e4e7e6;
+  --color-blue-800: #f1f3f2;
+  --color-blue-900: #f1f3f2;
+
+  /* Status colours: tinted fills with light text. */
+  --color-red-50: rgb(239 68 68 / 14%);
+  --color-red-200: rgb(239 68 68 / 35%);
+  --color-red-700: #fca5a5;
+  --color-green-50: rgb(34 197 94 / 14%);
+  --color-green-200: rgb(34 197 94 / 35%);
+  --color-green-600: #16a34a;
+  --color-green-700: #86efac;
+  --color-amber-50: rgb(245 158 11 / 14%);
+  --color-amber-700: #fcd34d;
+  --color-orange-50: rgb(249 115 22 / 14%);
+  --color-orange-700: #fdba74;
+}
+
+:root[data-theme="dark"] body {
+  background: var(--pd-dark-bg);
+  color: var(--pd-dark-text);
+}
+
+/* Cards and panels drawn with Tailwind's bg-white. !important because the
+   DashQ template's Bootstrap marks its own .bg-white / .text-white so. */
+:root[data-theme="dark"] .bg-white {
+  background-color: var(--pd-dark-surface) !important;
+}
+
+/* Light buttons now carry dark text (they were navy with white text). */
+:root[data-theme="dark"] :is(.bg-blue-600, .bg-slate-800, .bg-slate-900),
+:root[data-theme="dark"] :is(.hover\:bg-blue-700, .hover\:bg-slate-900):hover {
+  color: var(--pd-dark-bg) !important;
+}
+
+:root[data-theme="dark"] :is(.bg-green-600, .bg-red-600) {
+  color: #fff !important;
+}
+
+:root[data-theme="dark"] .text-red-600 {
+  color: #fca5a5;
+}
+
+/* Bootstrap's .border forces a light border colour with !important; keep
+   neutral borders on the dark palette (coloured ones like border-red-200 are
+   left alone). */
+:root[data-theme="dark"] .border:not([class*="border-red"], [class*="border-green"], [class*="border-amber"], [class*="border-orange"]) {
+  border-color: var(--pd-dark-border) !important;
+}
+
+:root[data-theme="dark"] :is(.border-slate-300, .border-gray-300) {
+  border-color: #4a5c6a !important;
+}
+
+/* Form fields inside the app (the landing page styles its own). */
+:root[data-theme="dark"] :is(.dashq-shell, .pd-modal, .pd-auth) :is(input, select, textarea) {
+  border-color: #4a5c6a !important;
+  background-color: var(--pd-dark-raised);
+  color: var(--pd-dark-text);
+}
+
+:root[data-theme="dark"] :is(.dashq-shell, .pd-modal, .pd-auth) :is(input, textarea)::placeholder {
+  color: #9ba8ab;
+}
+
+:root[data-theme="dark"] .pd-modal {
+  background: var(--pd-dark-surface);
+  color: var(--pd-dark-text);
+  box-shadow: 0 24px 60px -12px rgb(0 0 0 / 60%);
+}
+
+:root[data-theme="dark"] .pd-modal::backdrop {
+  background: rgb(3 10 14 / 72%);
+}
+
+:root[data-theme="dark"] .pd-modal .pd-modal-head {
+  border-bottom-color: var(--pd-dark-border);
+}
+
+:root[data-theme="dark"] .pd-modal .pd-modal-head h2 {
+  color: var(--pd-dark-text);
+}
+
+:root[data-theme="dark"] .pd-modal .pd-modal-head p,
+:root[data-theme="dark"] .pd-modal-close {
+  color: var(--pd-dark-muted);
+}
+
+:root[data-theme="dark"] .pd-modal-close:hover {
+  background: var(--pd-dark-raised);
+  color: var(--pd-dark-text);
+}
+
+:root[data-theme="dark"] .pd-swal-popup {
+  background: var(--pd-dark-surface);
+  color: var(--pd-dark-text);
+}
+
+:root[data-theme="dark"] .pd-swal-title {
+  color: var(--pd-dark-text);
+}
+
+:root[data-theme="dark"] .pd-swal-text {
+  color: var(--pd-dark-muted);
+}
+
+:root[data-theme="dark"] .pd-swal-popup .pd-swal-actions .pd-swal-button.is-primary {
+  background: var(--pd-dark-accent) !important;
+  color: var(--pd-dark-bg);
+}
+
+:root[data-theme="dark"] .pd-swal-popup .pd-swal-actions .pd-swal-button.is-primary:hover {
+  background: #e4e7e6 !important;
+}
+
+:root[data-theme="dark"] .pd-swal-popup .pd-swal-actions .pd-swal-button.is-secondary {
+  border-color: var(--pd-dark-border);
+  background: transparent !important;
+  color: var(--pd-dark-text);
+}
+
+:root[data-theme="dark"] .pd-swal-popup .pd-swal-actions .pd-swal-button.is-secondary:hover {
+  background: var(--pd-dark-raised) !important;
 }

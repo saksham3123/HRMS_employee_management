@@ -1,8 +1,12 @@
 
 import { useState } from "react";
 
+// Rendered inside a Modal (see DashboardModuleContent). onCreated runs after
+// a successful save so the parent can close the modal.
 export default function CreateEmployeeForm({
   onCreate,
+  onCreated,
+  onCancel,
   creating = false,
 }) {
   const [name, setName] = useState("");
@@ -11,39 +15,21 @@ export default function CreateEmployeeForm({
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("employee");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     setError("");
-    setSuccess("");
 
     try {
       await onCreate({ name, email, phone, password, role });
-
-      setSuccess("User account created successfully.");
-      setName("");
-      setEmail("");
-      setPhone("");
-      setPassword("");
-      setRole("employee");
+      onCreated?.();
     } catch (err) {
       setError(err.message || "Failed to create employee account.");
     }
   };
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-slate-900">
-          Create User Account
-        </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Register a new user account and assign a role.
-        </p>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label
@@ -152,20 +138,23 @@ export default function CreateEmployeeForm({
           </p>
         )}
 
-        {success && (
-          <p role="status" className="text-sm text-green-700">
-            {success}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={creating}
-          className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {creating ? "Creating..." : "Create User"}
-        </button>
+        <div className="flex flex-wrap justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={creating}
+            className="rounded-lg border border-slate-300 px-5 py-3 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={creating}
+            className="rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {creating ? "Creating..." : "Create account"}
+          </button>
+        </div>
       </form>
-    </section>
   );
 }

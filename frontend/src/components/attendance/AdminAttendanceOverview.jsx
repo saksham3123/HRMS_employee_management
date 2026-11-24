@@ -1,4 +1,6 @@
 
+import { hoursWorked, payEarned, useNow } from "../../utils/workTime";
+
 const formatTime = (value) => {
   if (!value) return "—";
 
@@ -20,6 +22,9 @@ export default function AdminAttendanceOverview({
   loading = false,
   error = "",
 }) {
+  // Hours and pay for people still working count up live.
+  const now = useNow();
+
   const currentlyWorking = records.filter(
   (record) => record.login_time && !record.logout_time
 );
@@ -132,11 +137,11 @@ const clockedOut = records.filter(
                       </td>
 
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
-                        {Number(record.working_hours ?? 0).toFixed(2)}
+                        {hoursWorked(record, now).toFixed(2)}
                       </td>
 
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
-                        {formatMoney(record.daily_pay)}
+                        {formatMoney(payEarned(record, now))}
                       </td>
 
                       <td className="whitespace-nowrap px-5 py-4">

@@ -1,39 +1,25 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { usePermissions } from "../../hooks/usePermissions";
+import { accessibleModules, findModule, modulePath } from "./dashboardModules";
+import ThemeToggle from "../common/ThemeToggle";
 
-const navigation = [
-  { key: "overview", label: "Overview", icon: "bi-grid-1x2", permission: null },
-  { key: "team", label: "My Team", icon: "bi-people", role: "manager" },
-  { key: "employees", label: "Employee Management", icon: "bi-people", permission: "users.view" },
-  { key: "departments", label: "Departments", icon: "bi-diagram-3", permission: "departments.manage" },
-  { key: "designations", label: "Designations", icon: "bi-person-badge", permission: "designations.manage" },
-  { key: "managers", label: "Reporting Managers", icon: "bi-diagram-2", permission: "users.view" },
-  { key: "leaves", label: "Leave Management", icon: "bi-calendar2-check", permissions: ["leave.apply", "leave.manage"] },
-  { key: "attendance", label: "Attendance", icon: "bi-clock-history", permission: "attendance.view.all" },
-  { key: "payroll", label: "Payroll", icon: "bi-wallet2", permission: "payroll.view.all" },
-  { key: "myAttendance", label: "My Attendance", icon: "bi-calendar-check", permission: "attendance.view.self", role: "employee" },
-  { key: "profile", label: "My Profile", icon: "bi-person", role: "employee" },
-];
+const ROLE_LABELS = { admin: "Admin", hr: "HR", manager: "Manager", employee: "Employee" };
 
-export default function DashboardLayout({
-  children,
-  activeItem = "overview",
-  onNavigate,
-}) {
+export default function DashboardLayout({ children, activeItem = "overview" }) {
   const { user, logout } = useAuth();
   const { hasPermission } = usePermissions();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const accountMenuRef = useRef(null);
-  const visibleNavigation = navigation.filter(
-    (item) =>
-      (!(item.permission || item.permissions) ||
-        (item.permissions ?? [item.permission]).some(hasPermission)) &&
-      (!item.role || item.role === user?.role)
-  );
-  const activeLabel =
-    navigation.find((item) => item.key === activeItem)?.label ?? activeItem;
+  const visibleNavigation = accessibleModules(user, hasPermission);
+  const activeModule = findModule(activeItem);
+  // Sessions from before the organization was added to the login response
+  // have no name to show; they pick it up on the next login.
+  const organizationName = user?.organization?.name;
+  const initial = (user?.name || "U").slice(0, 1).toUpperCase();
+  const roleLabel = ROLE_LABELS[user?.role] ?? user?.role ?? "Member";
 
   useEffect(() => {
     if (!accountDialogOpen) return undefined;
@@ -55,75 +41,78 @@ export default function DashboardLayout({
     };
   }, [accountDialogOpen]);
 
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileOpen]);
+
   return (
     <div className="dashq-shell">
       {mobileOpen && <button className="dashq-mobile-scrim" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
       <aside className={`dashq-sidebar ${mobileOpen ? "is-open" : ""}`}>
-        <div className="dashq-brand"><span className="dashq-brand-mark"><i className="bi bi-layers-half" /></span><span>People<span className="dashq-brand-light">Desk</span><small>HR MANAGEMENT</small></span></div>
-        <div className="dashq-nav-caption">WORKSPACE</div>
+        <div className="dashq-brand"><span className="dashq-brand-mark"><i className="bi bi-layers-half" /></span><span>People<span className="dashq-brand-light">Desk</span>{organizationName && <small className="dashq-brand-org" title={organizationName}>{organizationName}</small>}</span></div>
         <nav className="dashq-nav" aria-label="Dashboard navigation">
           {visibleNavigation.map((item) => (
-            <button
+            <Link
               key={item.key}
-              type="button"
+              to={modulePath(item)}
+              aria-current={activeItem === item.key ? "page" : undefined}
               className={`dashq-nav-item ${activeItem === item.key ? "active" : ""}`}
-              onClick={() => {
-                setMobileOpen(false);
-                onNavigate(item.key);
-              }}
+              onClick={() => setMobileOpen(false)}
             >
-              <i className={`bi ${item.icon}`} />
-              <span>{item.label}</span>
+              <i className={`bi ${item.icon}`} aria-hidden="true" />
+              <span>{item.title}</span>
               {activeItem === item.key && <span className="dashq-active-marker" />}
-            </button>
+            </Link>
           ))}
         </nav>
-        <div className="dashq-sidebar-bottom"><div className="dashq-help-icon"><i className="bi bi-life-preserver" /></div><div><strong>Need a hand?</strong><p>Contact your HRMS administrator.</p></div></div>
-        <div className="dashq-sidebar-user"><div className="dashq-avatar">{(user?.name || "U").slice(0, 1).toUpperCase()}</div><div className="dashq-user-copy"><strong>{user?.name || "User"}</strong><span>{user?.role || "Member"}</span></div><button type="button" title="Log out" aria-label="Log out" className="dashq-logout" onClick={logout}><i className="bi bi-box-arrow-right" /></button></div>
+        {user?.role !== "admin" && (
+          <div className="dashq-sidebar-bottom"><div className="dashq-help-icon"><i className="bi bi-life-preserver" aria-hidden="true" /></div><div><strong>Something wrong with your record?</strong><p>Ask your HR team or your company's PeopleDesk admin.</p></div></div>
+        )}
+        <div className="dashq-sidebar-user"><div className="dashq-avatar">{initial}</div><div className="dashq-user-copy"><strong>{user?.name || "User"}</strong><span>{roleLabel}</span></div><button type="button" title="Log out" aria-label="Log out" className="dashq-logout" onClick={logout}><i className="bi bi-box-arrow-right" /></button></div>
       </aside>
       <main className="dashq-main">
         <header className="dashq-topbar">
           <button
             className="dashq-menu-toggle"
             aria-label="Open navigation"
+            aria-expanded={mobileOpen}
             onClick={() => setMobileOpen(true)}
           >
             <i className="bi bi-list" />
           </button>
-          <div className="dashq-breadcrumb">
-            Workspace <i className="bi bi-chevron-right" />{" "}
-            <strong>{activeLabel}</strong>
-          </div>
+          <nav className="dashq-breadcrumb" aria-label="Breadcrumb">
+            {activeItem === "overview" ? (
+              <strong>{organizationName ?? "Overview"}</strong>
+            ) : (
+              <>
+                <Link to="/dashboard" className="dashq-breadcrumb-root">
+                  {organizationName ?? "Overview"}
+                </Link>
+                <i className="bi bi-chevron-right" aria-hidden="true" />
+                <strong aria-current="page">{activeModule?.title ?? activeItem}</strong>
+              </>
+            )}
+          </nav>
           <div className="dashq-top-actions">
-            <span className="dashq-status">
-              <span /> System operational
-            </span>
-            <button
-              type="button"
-              className="dashq-top-icon"
-              aria-label="Notifications"
-            >
-              <i className="bi bi-bell" />
-              <b />
-            </button>
-            <div
-              className="dashq-account-menu"
-              ref={accountMenuRef}
-              onMouseEnter={() => setAccountDialogOpen(true)}
-              onMouseLeave={() => setAccountDialogOpen(false)}
-            >
+            <ThemeToggle />
+            <div className="dashq-account-menu" ref={accountMenuRef}>
               <button
                 type="button"
                 className="dashq-top-avatar-button"
-                aria-label="Open account details"
+                aria-label="Account details"
                 aria-haspopup="true"
                 aria-expanded={accountDialogOpen}
                 aria-controls="dashq-account-menu"
-                onClick={() => setAccountDialogOpen(true)}
+                onClick={() => setAccountDialogOpen((open) => !open)}
               >
-                <span className="dashq-top-avatar">
-                  {(user?.name || "U").slice(0, 1).toUpperCase()}
-                </span>
+                <span className="dashq-top-avatar">{initial}</span>
               </button>
               {accountDialogOpen && (
                 <section
@@ -131,16 +120,17 @@ export default function DashboardLayout({
                   id="dashq-account-menu"
                   aria-label="Account details"
                 >
-                  <div className="dashq-account-avatar">
-                    {(user?.name || "U").slice(0, 1).toUpperCase()}
-                  </div>
+                  <div className="dashq-account-avatar">{initial}</div>
                   <h2>{user?.name || "User"}</h2>
                   {user?.email && (
                     <p className="dashq-account-email">{user.email}</p>
                   )}
                   <span className="dashq-account-role">
-                    {user?.role || "Member"}
+                    {roleLabel}
                   </span>
+                  {organizationName && (
+                    <p className="dashq-account-org">{organizationName}</p>
+                  )}
                   <button
                     type="button"
                     className="dashq-account-logout"

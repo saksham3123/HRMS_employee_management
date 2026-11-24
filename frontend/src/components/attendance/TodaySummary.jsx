@@ -1,36 +1,41 @@
+import { formatClockTime, hoursWorked, payEarned, useNow } from "../../utils/workTime";
+
+const formatMoney = (value) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(value ?? 0);
+
 export default function TodaySummary({ attendance }) {
-  const workingHours =
-  attendance?.working_hours ?? attendance?.workingHours ?? 0;
-
-const dailyPay =
-  attendance?.daily_pay ?? attendance?.dailyPay ?? 0;
-
-  let status = "Not clocked in";
+  // Re-render every 30 seconds so hours and pay count up while working.
+  const now = useNow(30_000);
 
   const loginTime = attendance?.login_time ?? attendance?.loginTime;
-const logoutTime = attendance?.logout_time ?? attendance?.logoutTime;
+  const logoutTime = attendance?.logout_time ?? attendance?.logoutTime;
+  const working = Boolean(loginTime && !logoutTime);
 
-if (loginTime && !logoutTime) {
-  status = "Currently working";
-} else if (loginTime && logoutTime) {
-  status = "Shift completed";
-}
+  let status = "Not clocked in";
+  if (working) status = "Currently working";
+  else if (loginTime && logoutTime) status = "Shift completed";
 
   const cards = [
     {
-      title: "Today's Status",
+      title: "Today's status",
       value: status,
-      description: "Your attendance status",
+      description: loginTime
+        ? `In ${formatClockTime(loginTime)}${logoutTime ? ` · Out ${formatClockTime(logoutTime)}` : ""}`
+        : "Clock in when you start work",
     },
     {
-      title: "Working Hours",
-      value: `${Number(workingHours).toFixed(2)} hrs`,
-      description: "Hours worked today",
+      title: "Working hours",
+      value: `${hoursWorked(attendance, now).toFixed(2)} hrs`,
+      description: working ? "So far today, updating live" : "Hours worked today",
     },
     {
-      title: "Today's Earnings",
-      value: `₹${Number(dailyPay).toFixed(2)}`,
-      description: "Calculated from working hours",
+      title: "Today's earnings",
+      value: formatMoney(payEarned(attendance, now)),
+      description: working ? "So far, at your hourly rate" : "Calculated from working hours",
     },
   ];
 
@@ -45,7 +50,7 @@ if (loginTime && !logoutTime) {
             {card.title}
           </p>
 
-          <p className="mt-4 text-2xl font-bold text-slate-900">
+          <p className="mt-4 text-2xl font-bold tabular-nums text-slate-900">
             {card.value}
           </p>
 

@@ -243,6 +243,8 @@ JOIN permissions  p ON p.permission_key IN (
     'departments.manage',
     'designations.manage',
     'attendance.view.all',
+    'attendance.view.self',
+    'attendance.clock',
     'leave.manage',
     'leave.apply',
     'payroll.view.self',
@@ -265,8 +267,11 @@ FROM roles r
 JOIN permissions p ON p.permission_key IN (
     'employees.view',
     'attendance.view.team',
+    'attendance.view.self',
+    'attendance.clock',
     'leave.approve.team',
-    'leave.apply'
+    'leave.apply',
+    'payroll.view.self'
 )
 WHERE r.name = 'manager'
 ON CONFLICT DO NOTHING;

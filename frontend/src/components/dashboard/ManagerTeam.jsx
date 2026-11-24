@@ -32,7 +32,7 @@ export default function ManagerTeam() {
     <section className="dashq-content-panel">
       <div className="dashq-panel-heading">
         <div>
-          <h2>My Team</h2>
+          <h2>Direct reports</h2>
           <p>Direct reports and their department information.</p>
         </div>
         {!loading && !error && (

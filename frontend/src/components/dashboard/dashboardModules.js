@@ -1,101 +1,102 @@
+// One place decides who can open each dashboard module. The sidebar, the
+// overview and the module content all read from here, so a link is only
+// shown when its page will actually work. Each `canAccess` mirrors the
+// permission checks the backend routes enforce.
+//
+// Self-service modules exclude admins: an admin account has every permission
+// but no employee record, and the backend refuses admins' leave requests.
+const isSelfService = (user) => user?.role !== "admin";
+
 export const dashboardModules = [
+  {
+    key: "overview",
+    title: "Overview",
+    icon: "bi-grid-1x2",
+    path: "/dashboard",
+    canAccess: () => true,
+  },
   {
     key: "team",
     title: "My Team",
-    description: "View your direct reports, their departments, and designations.",
-    role: "manager",
+    description: "Your direct reports, their departments and designations.",
     icon: "bi-people",
-    section: "My workspace",
-    value: "Team",
-    color: "blue",
+    canAccess: (user, has) => user?.role === "manager" && has("employees.view"),
   },
   {
     key: "employees",
     title: "Employee Management",
-    description: "View employee records and manage employee information.",
-    permission: "users.view",
+    description: "Employee records and account access.",
     icon: "bi-people",
-    section: "People",
-    value: "Manage",
-    color: "blue",
+    canAccess: (_user, has) => has("users.view"),
   },
   {
     key: "departments",
     title: "Departments",
-    description: "Manage departments and view their employee counts.",
-    permission: "departments.manage",
+    description: "Departments and how many people are in each.",
     icon: "bi-diagram-3",
-    section: "People",
-    value: "Manage",
-    color: "blue",
+    canAccess: (_user, has) => has("departments.manage"),
   },
   {
     key: "designations",
     title: "Designations",
-    description: "Manage job titles and view employees in each designation.",
-    permission: "designations.manage",
+    description: "Job titles and who holds them.",
     icon: "bi-person-badge",
-    section: "People",
-    value: "Manage",
-    color: "blue",
+    canAccess: (_user, has) => has("designations.manage"),
   },
   {
     key: "managers",
     title: "Reporting Managers",
-    description: "Assign and update employee reporting relationships.",
-    permission: "users.view",
+    description: "Who reports to whom.",
     icon: "bi-diagram-2",
-    section: "People",
-    value: "Manage",
-    color: "blue",
+    canAccess: (_user, has) => has("users.view") && has("employees.view"),
+  },
+  {
+    key: "leaves",
+    title: "Leave",
+    description: "Apply for leave, and review the requests you're responsible for.",
+    icon: "bi-calendar2-check",
+    canAccess: (_user, has) =>
+      has("leave.apply") || has("leave.manage") || has("leave.approve.team"),
   },
   {
     key: "attendance",
     title: "Attendance",
-    description: "Review today's attendance and daily work records.",
-    permission: "attendance.view.all",
+    description: "Who has clocked in today, and their hours so far.",
     icon: "bi-clock-history",
-    section: "Operations",
-    value: "Overview",
-    color: "orange",
+    canAccess: (_user, has) => has("attendance.view.all"),
   },
   {
     key: "payroll",
     title: "Payroll",
-    description: "Review payroll summaries and employee payments.",
-    permission: "payroll.view.all",
+    description: "Monthly pay summaries and per-employee reports.",
     icon: "bi-wallet2",
-    section: "Finance",
-    value: "Reports",
-    color: "blue",
+    canAccess: (_user, has) => has("payroll.view.all"),
   },
   {
     key: "myAttendance",
     title: "My Attendance",
-    description: "Clock in or out and review your attendance history.",
-    permission: "attendance.view.self",
-    role: "employee",
+    description: "Clock in and out, and see your attendance history.",
     icon: "bi-calendar-check",
-    section: "My workspace",
-    value: "Today",
-    color: "green",
+    canAccess: (user, has) => isSelfService(user) && has("attendance.view.self"),
   },
   {
-    key: "leaves",
-    title: "Leave Management",
-    description: "Apply for leave and track or review requests.",
-    permissions: ["leave.apply", "leave.manage"],
-    icon: "bi-calendar2-check",
-    section: "People",
-    value: "Requests",
-    color: "green",
+    key: "profile",
+    title: "My Profile",
+    icon: "bi-person",
+    path: "/user/profile",
+    canAccess: (user) => isSelfService(user),
   },
 ];
 
-export const hasModulePermission = (module, permissions) => {
-  const requiredPermissions = module.permissions ?? (
-    module.permission ? [module.permission] : []
+export const modulePath = (module) => module.path ?? `/dashboard/${module.key}`;
+
+export const findModule = (key) =>
+  dashboardModules.find((module) => module.key === key);
+
+export const canAccessModule = (module, user, hasPermission) =>
+  Boolean(module?.canAccess(user, hasPermission));
+
+export const accessibleModules = (user, hasPermission) =>
+  dashboardModules.filter((module) =>
+    canAccessModule(module, user, hasPermission)
   );
-  return requiredPermissions.length === 0 ||
-    requiredPermissions.some((permission) => permissions.includes(permission));
-};

@@ -1,4 +1,3 @@
-import prisma from "../config/prisma.js";
 
 // Prisma error codes
 // P2002 -> unique constraint failed (duplicate title)
@@ -16,7 +15,7 @@ const withEmployeeCount = ({ _count, ...designation }) => ({
 // get designations
 export const getDesignations = async (req, res) => {
   try {
-    const designations = await prisma.designations.findMany({
+    const designations = await req.db.designations.findMany({
       orderBy: { title: "asc" },
       include: { _count: { select: { employees: true } } },
     });
@@ -44,7 +43,7 @@ export const getDesignationById = async (req, res) => {
   }
 
   try {
-    const designation = await prisma.designations.findUnique({
+    const designation = await req.db.designations.findUnique({
       where: { id: Number(id) },
       include: { _count: { select: { employees: true } } },
     });
@@ -75,7 +74,7 @@ export const createDesignation = async (req, res) => {
   }
 
   try {
-    const designation = await prisma.designations.create({
+    const designation = await req.db.designations.create({
       data: {
         title: title.trim(),
         description: description?.trim() || null,
@@ -116,7 +115,7 @@ export const updateDesignation = async (req, res) => {
   }
 
   try {
-    const designation = await prisma.designations.update({
+    const designation = await req.db.designations.update({
       where: { id: Number(id) },
       data: {
         title: title.trim(),
@@ -153,7 +152,7 @@ export const deleteDesignation = async (req, res) => {
   }
 
   try {
-    const designation = await prisma.designations.findUnique({
+    const designation = await req.db.designations.findUnique({
       where: { id: Number(id) },
       select: { id: true, title: true },
     });
@@ -163,7 +162,7 @@ export const deleteDesignation = async (req, res) => {
     }
 
     // Deletes only when no employee holds this designation, in a single query.
-    const { count } = await prisma.designations.deleteMany({
+    const { count } = await req.db.designations.deleteMany({
       where: {
         id: Number(id),
         employees: { none: {} },

@@ -1,10 +1,11 @@
 import prisma from "../config/prisma.js";
+import { getToday, getTodayText } from "../config/time.js";
 
 // ---------- helpers ----------
 
 // Resolve the employee profile associated with the authenticated user.
-const getEmployeeByUserId = (userId) =>
-  prisma.employees.findUnique({
+const getEmployeeByUserId = (db, userId) =>
+  db.employees.findUnique({
     where: { user_id: userId },
     select: { id: true, user_id: true },
   });
@@ -32,12 +33,8 @@ const getHourlyRate = () => {
   return rate;
 };
 
-// "Today" according to PostgreSQL (CURRENT_DATE), so the date logic stays
-// exactly as before and doesn't depend on the Node server's timezone.
-const getDbToday = async () => {
-  const [{ today }] = await prisma.$queryRaw`SELECT CURRENT_DATE::text AS today`;
-  return new Date(`${today}T00:00:00.000Z`);
-};
+// "Today" in the company's timezone (config/time.js).
+const getDbToday = () => getToday(prisma);
 
 // First day of the month and first day of the next month, for DATE range filters.
 const getMonthRange = (year, month) => ({
@@ -74,7 +71,7 @@ const toNumber = (decimal) => (decimal == null ? 0 : Number(decimal));
 // 1. Clock in
 export const clockIn = async (req, res) => {
   try {
-    const employee = await getEmployeeByUserId(req.user.userId);
+    const employee = await getEmployeeByUserId(req.db, req.user.userId);
 
     if (!employee) {
       return res.status(404).json({
@@ -82,10 +79,11 @@ export const clockIn = async (req, res) => {
       });
     }
 
-    // `date` is filled by the database default (CURRENT_DATE).
-    await prisma.attendance.create({
+    // The date is the company's calendar day, not the database's.
+    await req.db.attendance.create({
       data: {
         employee_id: employee.id,
+        date: await getDbToday(),
         login_time: new Date(),
         hourly_rate: getHourlyRate(),
       },
@@ -113,7 +111,7 @@ export const clockIn = async (req, res) => {
 // 2. Clock out
 export const clockOut = async (req, res) => {
   try {
-    const employee = await getEmployeeByUserId(req.user.userId);
+    const employee = await getEmployeeByUserId(req.db, req.user.userId);
 
     if (!employee) {
       return res.status(404).json({
@@ -123,7 +121,8 @@ export const clockOut = async (req, res) => {
 
     // Kept as SQL: hours and pay are calculated from login_time inside
     // the database in a single atomic update, exactly as before.
-    const [updated] = await prisma.$queryRaw`
+    const today = await getTodayText(prisma);
+    const [updated] = await req.db.$queryRaw`
       UPDATE attendance
       SET
           logout_time = CURRENT_TIMESTAMP,
@@ -137,12 +136,12 @@ export const clockOut = async (req, res) => {
           ),
           updated_at = CURRENT_TIMESTAMP
       WHERE employee_id = ${employee.id}
-        AND date = CURRENT_DATE
+        AND date = ${today}::date
         AND logout_time IS NULL
       RETURNING *`;
 
     if (!updated) {
-      const today = await prisma.attendance.findUnique({
+      const today = await req.db.attendance.findUnique({
         where: {
           employee_id_date: {
             employee_id: employee.id,
@@ -179,7 +178,7 @@ export const clockOut = async (req, res) => {
 // 3. Get today's attendance for the logged-in employee
 export const getTodayAttendance = async (req, res) => {
   try {
-    const employee = await getEmployeeByUserId(req.user.userId);
+    const employee = await getEmployeeByUserId(req.db, req.user.userId);
 
     if (!employee) {
       return res.status(404).json({
@@ -187,7 +186,7 @@ export const getTodayAttendance = async (req, res) => {
       });
     }
 
-    const attendance = await prisma.attendance.findUnique({
+    const attendance = await req.db.attendance.findUnique({
       where: {
         employee_id_date: {
           employee_id: employee.id,
@@ -217,7 +216,7 @@ export const getTodayAttendance = async (req, res) => {
 // 4. Get attendance history for the logged-in employee
 export const getAttendanceHistory = async (req, res) => {
   try {
-    const employee = await getEmployeeByUserId(req.user.userId);
+    const employee = await getEmployeeByUserId(req.db, req.user.userId);
 
     if (!employee) {
       return res.status(404).json({
@@ -225,7 +224,7 @@ export const getAttendanceHistory = async (req, res) => {
       });
     }
 
-    const records = await prisma.attendance.findMany({
+    const records = await req.db.attendance.findMany({
       where: { employee_id: employee.id },
       orderBy: { date: "desc" },
     });
@@ -262,7 +261,7 @@ export const getUserMonthlyReport = async (req, res) => {
       });
     }
 
-    const user = await prisma.users.findUnique({
+    const user = await req.db.users.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -290,11 +289,11 @@ export const getUserMonthlyReport = async (req, res) => {
     };
 
     const [attendance, totals] = await Promise.all([
-      prisma.attendance.findMany({
+      req.db.attendance.findMany({
         where,
         orderBy: { date: "asc" },
       }),
-      prisma.attendance.aggregate({
+      req.db.attendance.aggregate({
         where,
         _count: { _all: true },
         _sum: { working_hours: true, daily_pay: true },
@@ -328,7 +327,7 @@ export const getUserMonthlyReport = async (req, res) => {
 // 6. Get today's attendance for all employees
 export const getAllTodayAttendance = async (req, res) => {
   try {
-    const records = await prisma.attendance.findMany({
+    const records = await req.db.attendance.findMany({
       where: {
         date: await getDbToday(),
         // Same as the old INNER JOIN users
@@ -374,7 +373,7 @@ export const getMonthlyPayrollSummary = async (req, res) => {
       });
     }
 
-    const summary = await prisma.attendance.aggregate({
+    const summary = await req.db.attendance.aggregate({
       where: { date: getMonthRange(year, month) },
       _count: { _all: true },
       _sum: { daily_pay: true, working_hours: true },
@@ -411,7 +410,7 @@ export const getMonthlyPayrollByEmployee = async (req, res) => {
     // Every employee with a user account (employees with no attendance
     // this month still appear with zeros, like the old LEFT JOIN).
     const [employees, totalsByEmployee] = await Promise.all([
-      prisma.employees.findMany({
+      req.db.employees.findMany({
         where: { users: { isNot: null } },
         select: {
           id: true,
@@ -419,7 +418,7 @@ export const getMonthlyPayrollByEmployee = async (req, res) => {
         },
         orderBy: { users: { name: "asc" } },
       }),
-      prisma.attendance.groupBy({
+      req.db.attendance.groupBy({
         by: ["employee_id"],
         where: { date: getMonthRange(year, month) },
         _count: { _all: true },

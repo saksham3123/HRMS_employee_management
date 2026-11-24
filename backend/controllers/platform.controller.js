@@ -1,12 +1,13 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import prisma from "../config/prisma.js";
+import { getTodayText } from "../config/time.js";
+import { isAssignablePlan } from "./plan.controller.js";
 
 // Platform (super admin) APIs.
 // These use the base `prisma` client because they work across companies.
 // They only ever return company-level info and COUNTS, never employee data.
 
-export const PLANS = ["free", "basic", "pro", "enterprise"];
 const STATUSES = ["active", "suspended"];
 const DEFAULT_LEAVE_TYPES = ["Annual Leave", "Sick Leave", "Personal Leave"];
 
@@ -235,8 +236,8 @@ export const createOrganization = async (req, res) => {
         });
     }
 
-    if (!PLANS.includes(plan)) {
-        return res.status(400).json({ message: `Plan must be one of: ${PLANS.join(", ")}` });
+    if (!(await isAssignablePlan(plan))) {
+        return res.status(400).json({ message: "Choose a plan that is currently offered" });
     }
 
     if (
@@ -299,7 +300,7 @@ export const createOrganization = async (req, res) => {
             });
 
             // 3. The Admin's employee record (joining date = today in PostgreSQL)
-            const [{ today }] = await tx.$queryRaw`SELECT CURRENT_DATE::text AS today`;
+            const today = await getTodayText(tx);
 
             await tx.employees.create({
                 data: {
@@ -394,7 +395,7 @@ export const updateOrganizationStatus = async (req, res) => {
 };
 
 // PATCH /api/platform/organizations/:id/plan
-// Body: { plan: "free" | "basic" | "pro" | "enterprise" }
+// Body: { plan: <code of an active plan> }
 export const updateOrganizationPlan = async (req, res) => {
     const id = toId(req.params.id);
     const { plan } = req.body ?? {};
@@ -403,8 +404,8 @@ export const updateOrganizationPlan = async (req, res) => {
         return res.status(400).json({ message: "Invalid organization ID" });
     }
 
-    if (!PLANS.includes(plan)) {
-        return res.status(400).json({ message: `Plan must be one of: ${PLANS.join(", ")}` });
+    if (!(await isAssignablePlan(plan))) {
+        return res.status(400).json({ message: "Choose a plan that is currently offered" });
     }
 
     try {

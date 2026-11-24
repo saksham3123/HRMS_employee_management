@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import departmentService from "../../../services/departmentServices";
 import DepartmentForm from "./DepartmentForm";
 import DepartmentTable from "./DepartmentTable";
+import { confirmAction } from "../../../utils/confirmAction";
+import Modal from "../../common/Modal";
 
 const getDepartments = async () => {
   const response = await departmentService.getAll();
@@ -102,9 +104,12 @@ function Departments({
   };
 
   const handleDelete = async (department) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete ${department.name}?`
-    );
+    const confirmed = await confirmAction({
+      title: `Delete ${department.name}?`,
+      text: "This department will be removed. This can't be undone.",
+      confirmText: "Delete",
+      tone: "danger",
+    });
 
     if (!confirmed) return;
 
@@ -134,16 +139,8 @@ function Departments({
   return (
     <div className="space-y-6 p-6">
 
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">
-            Departments
-          </h1>
-
-          <p className="mt-1 text-sm text-gray-500">
-            Manage your organization's departments.
-          </p>
-        </div>
+      {/* The page title comes from the dashboard shell. */}
+      <div className="flex flex-wrap items-center justify-end gap-4">
 
         {canCreate && (
           <button
@@ -156,7 +153,7 @@ function Departments({
         )}
       </div>
 
-      {error && (
+      {error && !showForm && (
         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
           {error}
         </div>
@@ -168,23 +165,26 @@ function Departments({
         </div>
       )}
 
-      {showForm && (
-        <div className="rounded-lg border bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold">
-            {selectedDepartment
-              ? "Edit Department"
-              : "Create Department"}
-          </h2>
-
-          <DepartmentForm
-            key={selectedDepartment?.id ?? "new"}
-            department={selectedDepartment}
-            onSubmit={handleSubmit}
-            onCancel={() => setShowForm(false)}
-            loading={saving}
-          />
-        </div>
-      )}
+      <Modal
+        open={showForm}
+        title={selectedDepartment ? "Edit department" : "Add department"}
+        description="Departments group people for reporting and headcount."
+        onClose={() => setShowForm(false)}
+        busy={saving}
+      >
+        {error && (
+          <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+        <DepartmentForm
+          key={selectedDepartment?.id ?? "new"}
+          department={selectedDepartment}
+          onSubmit={handleSubmit}
+          onCancel={() => setShowForm(false)}
+          loading={saving}
+        />
+      </Modal>
 
       <DepartmentTable
         departments={departments}

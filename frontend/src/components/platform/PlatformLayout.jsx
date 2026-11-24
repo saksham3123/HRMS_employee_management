@@ -1,18 +1,20 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "../dashboard/Dashboard.css";
+import ThemeToggle from "../common/ThemeToggle";
 import {
   clearPlatformSession,
   getPlatformAdmin,
 } from "../../services/platformService";
 
 export const platformNavigation = [
-  { key: "overview", label: "Overview", icon: "bi-grid-1x2" },
-  { key: "companies", label: "Companies", icon: "bi-buildings" },
+  { key: "overview", label: "Overview", icon: "bi-grid-1x2", path: "/platform" },
+  { key: "companies", label: "Companies", icon: "bi-buildings", path: "/platform/companies" },
+  { key: "plans", label: "Plans", icon: "bi-tags", path: "/platform/plans" },
 ];
 
 // Same look as the company DashboardLayout, with platform navigation.
-export default function PlatformLayout({ children, activeItem, onNavigate }) {
+export default function PlatformLayout({ children, activeItem }) {
   const navigate = useNavigate();
   const admin = getPlatformAdmin();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -47,23 +49,19 @@ export default function PlatformLayout({ children, activeItem, onNavigate }) {
           </span>
         </div>
 
-        <div className="dashq-nav-caption">PLATFORM</div>
-
         <nav className="dashq-nav" aria-label="Platform navigation">
           {platformNavigation.map((item) => (
-            <button
+            <Link
               key={item.key}
-              type="button"
+              to={item.path}
+              aria-current={activeItem === item.key ? "page" : undefined}
               className={`dashq-nav-item ${activeItem === item.key ? "active" : ""}`}
-              onClick={() => {
-                setMobileOpen(false);
-                onNavigate(item.key);
-              }}
+              onClick={() => setMobileOpen(false)}
             >
-              <i className={`bi ${item.icon}`} />
+              <i className={`bi ${item.icon}`} aria-hidden="true" />
               <span>{item.label}</span>
               {activeItem === item.key && <span className="dashq-active-marker" />}
-            </button>
+            </Link>
           ))}
         </nav>
 
@@ -105,14 +103,20 @@ export default function PlatformLayout({ children, activeItem, onNavigate }) {
             <i className="bi bi-list" />
           </button>
 
-          <div className="dashq-breadcrumb">
-            Platform <i className="bi bi-chevron-right" /> <strong>{activeLabel}</strong>
-          </div>
+          <nav className="dashq-breadcrumb" aria-label="Breadcrumb">
+            {activeItem === "overview" ? (
+              <strong>Platform</strong>
+            ) : (
+              <>
+                <Link to="/platform" className="dashq-breadcrumb-root">Platform</Link>
+                <i className="bi bi-chevron-right" aria-hidden="true" />
+                <strong aria-current="page">{activeLabel}</strong>
+              </>
+            )}
+          </nav>
 
           <div className="dashq-top-actions">
-            <span className="dashq-status">
-              <span /> System operational
-            </span>
+            <ThemeToggle />
             <span className="dashq-top-avatar" title={admin?.email}>
               {initial}
             </span>

@@ -1,13 +1,13 @@
-import { useCallback, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { Navigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { usePermissions } from "../hooks/usePermissions";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DashboardOverview from "../components/dashboard/DashboardOverview";
 import DashboardModuleContent from "../components/dashboard/DashboardModuleContent";
 import {
-  dashboardModules,
-  hasModulePermission,
+  canAccessModule,
+  findModule,
 } from "../components/dashboard/dashboardModules";
 import {
   getTodayAttendance,
@@ -24,20 +24,14 @@ import "../components/dashboard/Dashboard.css";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { permissions, hasPermission } = usePermissions();
-  const [search, setSearch] = useState("");
-  const [activeModule, setActiveModule] = useState(
-    dashboardModules.some(
-      (item) =>
-        item.key === location.state?.dashboardModule &&
-        hasModulePermission(item, permissions) &&
-        (!item.role || item.role === user?.role)
-    )
-      ? location.state.dashboardModule
-      : "overview"
-  );
+  const { hasPermission } = usePermissions();
+  // The module lives in the URL (/dashboard/leaves), so refresh, Back and
+  // shared links all land on the same page.
+  const { module: moduleKey = "overview" } = useParams();
+  const selectedModule = findModule(moduleKey);
+  const canOpen =
+    moduleKey !== "profile" && canAccessModule(selectedModule, user, hasPermission);
+  const activeModule = canOpen ? moduleKey : null;
 
   const [employees, setEmployees] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(false);
@@ -56,32 +50,13 @@ export default function Dashboard() {
   const [myAttendanceLoading, setMyAttendanceLoading] = useState(false);
   const [myAttendanceError, setMyAttendanceError] = useState("");
 
-  const visibleModules = useMemo(
-    () =>
-      dashboardModules.filter(
-        (item) =>
-          hasModulePermission(item, permissions) &&
-          (!item.role || item.role === user?.role) &&
-          item.title.toLowerCase().includes(search.toLowerCase())
-      ),
-    [permissions, search, user?.role]
-  );
-  const visibleStats = dashboardModules.filter(
-    (item) =>
-      hasModulePermission(item, permissions) &&
-      (!item.role || item.role === user?.role)
-  );
-  const selectedModule = dashboardModules.find(
-    (item) => item.key === activeModule
-  );
-
+  // The fetchers only set state after their request resolves; the loading
+  // flags for a newly opened module are set below, while rendering.
   const fetchEmployees = useCallback(async () => {
-    setEmployeesLoading(true);
-    setEmployeeError("");
-
     try {
       const data = await getAllEmployees();
       setEmployees(data.users ?? []);
+      setEmployeeError("");
     } catch (error) {
       setEmployeeError(error.message || "Failed to load employees.");
     } finally {
@@ -90,12 +65,10 @@ export default function Dashboard() {
   }, []);
 
   const fetchTodayAttendance = useCallback(async () => {
-    setTodayAttendanceLoading(true);
-    setAttendanceError("");
-
     try {
       const data = await getTodayAttendanceForAdmin();
       setTodayAttendance(data.attendance ?? []);
+      setAttendanceError("");
     } catch (error) {
       setAttendanceError(error.message || "Failed to load today's attendance.");
     } finally {
@@ -104,59 +77,60 @@ export default function Dashboard() {
   }, []);
 
   const fetchMyAttendance = useCallback(async () => {
-    setMyAttendanceLoading(true);
-    setMyAttendanceError("");
     const errors = [];
 
     try {
       const data = await getTodayAttendance();
       setMyAttendance(data.attendance ?? null);
     } catch (error) {
-      errors.push(error.message || "Failed to load today's attendance.");
+      errors.push(`Today's attendance: ${error.message || "failed to load."}`);
     }
 
     try {
       const data = await getAttendanceHistory();
       setAttendanceHistory(data.attendance ?? data.records ?? []);
     } catch (error) {
-      errors.push(error.message || "Failed to load attendance history.");
+      errors.push(`Attendance history: ${error.message || "failed to load."}`);
     }
 
     setMyAttendanceError(errors.join(" "));
     setMyAttendanceLoading(false);
   }, []);
 
-  const handleNavigate = (moduleKey) => {
-    if (moduleKey === "profile") {
-      navigate("/user/profile");
-      return;
+  const needsEmployees =
+    activeModule === "employees" ||
+    (activeModule === "payroll" && hasPermission("users.view"));
+
+  // Opening a module shows its loading state straight away (adjusting state
+  // during render, so there's no flash of the previous module's data).
+  const [preparedModule, setPreparedModule] = useState(null);
+  if (preparedModule !== activeModule) {
+    setPreparedModule(activeModule);
+    if (needsEmployees) {
+      setEmployeesLoading(true);
+      setEmployeeError("");
+    } else if (activeModule === "attendance") {
+      setTodayAttendanceLoading(true);
+      setAttendanceError("");
+    } else if (activeModule === "myAttendance") {
+      setMyAttendanceLoading(true);
+      setMyAttendanceError("");
     }
+  }
 
-    const requestedModule = dashboardModules.find(
-      (item) => item.key === moduleKey
-    );
-    if (
-      requestedModule &&
-      (!hasModulePermission(requestedModule, permissions) ||
-        (requestedModule.role && requestedModule.role !== user?.role))
-    ) {
-      setActiveModule("overview");
-      return;
-    }
-
-    setActiveModule(moduleKey);
-
-    if (
-      moduleKey === "employees" ||
-      (moduleKey === "payroll" && hasPermission("users.view"))
-    ) {
+  // Load whatever the open module needs whenever it changes.
+  // The fetchers only set state after their request settles, which this rule
+  // can't see through.
+  useEffect(() => {
+    if (needsEmployees) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchEmployees();
-    } else if (moduleKey === "attendance") {
+    } else if (activeModule === "attendance") {
       fetchTodayAttendance();
-    } else if (moduleKey === "myAttendance") {
+    } else if (activeModule === "myAttendance") {
       fetchMyAttendance();
     }
-  };
+  }, [activeModule, needsEmployees, fetchEmployees, fetchTodayAttendance, fetchMyAttendance]);
 
   const handleCreateEmployee = async (employeeData) => {
     setCreatingEmployee(true);
@@ -211,39 +185,26 @@ export default function Dashboard() {
     }
   };
 
-  const openModule = (moduleKey) => {
-    setSearch("");
-    handleNavigate(moduleKey);
-  };
+  if (moduleKey === "profile") {
+    return <Navigate to="/user/profile" replace />;
+  }
+
+  // Unknown module, or one this account can't open: back to the overview.
+  if (!activeModule) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
-    <DashboardLayout activeItem={activeModule} onNavigate={handleNavigate}>
+    <DashboardLayout activeItem={activeModule}>
       {activeModule === "overview" ? (
-        <DashboardOverview
-          user={user}
-          visibleStats={visibleStats}
-          visibleModules={visibleModules}
-          search={search}
-          onSearchChange={setSearch}
-          onOpenModule={openModule}
-        />
+        <DashboardOverview user={user} hasPermission={hasPermission} />
       ) : (
         <>
           <div className="dashq-page-heading">
             <div>
-              <div className="dashq-eyebrow">
-                WORKSPACE / {selectedModule?.title.toUpperCase()}
-              </div>
-              <h1>{selectedModule?.title}</h1>
-              <p>{selectedModule?.description}</p>
+              <h1>{selectedModule.title}</h1>
+              {selectedModule.description && <p>{selectedModule.description}</p>}
             </div>
-            <button
-              type="button"
-              className="dashq-open-button"
-              onClick={() => handleNavigate("overview")}
-            >
-              <i className="bi bi-arrow-left" /> Back to overview
-            </button>
           </div>
 
           <DashboardModuleContent

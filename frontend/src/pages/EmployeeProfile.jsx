@@ -1,6 +1,5 @@
 
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import { getProfile, updateProfile } from "../services/profileService";
@@ -8,7 +7,6 @@ import "../components/dashboard/Dashboard.css";
 
 export default function EmployeeProfile() {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({ name: "", email: "" });
@@ -73,19 +71,10 @@ export default function EmployeeProfile() {
     }
   };
 
-  const handleNavigate = (item) => {
-    if (item === "profile") return;
-
-    navigate("/dashboard", {
-      state: { dashboardModule: item },
-    });
-  };
-
   return (
-    <DashboardLayout activeItem="profile" onNavigate={handleNavigate}>
+    <DashboardLayout activeItem="profile">
       <div className="dashq-page-heading">
         <div>
-          <div className="dashq-eyebrow">WORKSPACE / MY PROFILE</div>
           <h1>My Profile</h1>
           <p>View and manage your personal information.</p>
         </div>
