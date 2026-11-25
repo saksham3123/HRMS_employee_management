@@ -11,8 +11,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => getCurrentUser());
 
   // Login and save the authenticated user
-  const login = async (email, password) => {
-    const data = await loginUser(email, password);
+  const login = async (email, password, slug) => {
+    const data = await loginUser(email, password, slug);
     setUser(data.user);
     return data.user;
   };

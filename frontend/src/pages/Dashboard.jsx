@@ -20,12 +20,13 @@ import {
   getTodayAttendanceForAdmin,
   updateEmployee,
 } from "../services/adminService";
+import { companyPath } from "../utils/companyPath";
 import "../components/dashboard/Dashboard.css";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
-  // The module lives in the URL (/dashboard/leaves), so refresh, Back and
+  // The module lives in the URL (/<slug>/dashboard/leaves), so refresh, Back and
   // shared links all land on the same page.
   const { module: moduleKey = "overview" } = useParams();
   const selectedModule = findModule(moduleKey);
@@ -186,12 +187,12 @@ export default function Dashboard() {
   };
 
   if (moduleKey === "profile") {
-    return <Navigate to="/user/profile" replace />;
+    return <Navigate to={companyPath(user, "/profile")} replace />;
   }
 
   // Unknown module, or one this account can't open: back to the overview.
   if (!activeModule) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={companyPath(user)} replace />;
   }
 
   return (
@@ -212,6 +213,7 @@ export default function Dashboard() {
             user={user}
             hasPermission={hasPermission}
             onCreateEmployee={handleCreateEmployee}
+            onEmployeesImported={fetchEmployees}
             creatingEmployee={creatingEmployee}
             employeeError={employeeError}
             employeeSuccess={employeeSuccess}

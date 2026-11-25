@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { usePermissions } from "../../hooks/usePermissions";
 import { accessibleModules, findModule, modulePath } from "./dashboardModules";
 import ThemeToggle from "../common/ThemeToggle";
+import { companyPath } from "../../utils/companyPath";
 
 const ROLE_LABELS = { admin: "Admin", hr: "HR", manager: "Manager", employee: "Employee" };
 
@@ -61,7 +62,7 @@ export default function DashboardLayout({ children, activeItem = "overview" }) {
           {visibleNavigation.map((item) => (
             <Link
               key={item.key}
-              to={modulePath(item)}
+              to={modulePath(item, user)}
               aria-current={activeItem === item.key ? "page" : undefined}
               className={`dashq-nav-item ${activeItem === item.key ? "active" : ""}`}
               onClick={() => setMobileOpen(false)}
@@ -92,7 +93,7 @@ export default function DashboardLayout({ children, activeItem = "overview" }) {
               <strong>{organizationName ?? "Overview"}</strong>
             ) : (
               <>
-                <Link to="/dashboard" className="dashq-breadcrumb-root">
+                <Link to={companyPath(user)} className="dashq-breadcrumb-root">
                   {organizationName ?? "Overview"}
                 </Link>
                 <i className="bi bi-chevron-right" aria-hidden="true" />

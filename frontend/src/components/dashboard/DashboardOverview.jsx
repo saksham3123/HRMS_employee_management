@@ -7,6 +7,7 @@ import managerService from "../../services/managerServices";
 import { apiRequest } from "../../services/api";
 import { canAccessModule, findModule } from "./dashboardModules";
 import { hoursWorked, useNow } from "../../utils/workTime";
+import { companyPath } from "../../utils/companyPath";
 
 // The overview opens on each person's real work for today. Every panel is
 // gated by the same access rules as its module, loads on its own, and fails
@@ -129,7 +130,7 @@ export default function DashboardOverview({ user, hasPermission }) {
         {can("myAttendance") && (
           <OverviewPanel
             title="Your day"
-            link={{ to: "/dashboard/myAttendance", label: "Attendance history" }}
+            link={{ to: companyPath(user, "/dashboard/myAttendance"), label: "Attendance history" }}
             state={myAttendance}
           >
             <ClockState attendance={myAttendance.data} />
@@ -148,7 +149,7 @@ export default function DashboardOverview({ user, hasPermission }) {
         {(reviewsAll || reviewsTeam) && (
           <OverviewPanel
             title={reviewsAll ? "Leave requests" : "Your team's leave requests"}
-            link={{ to: "/dashboard/leaves", label: "Review leave" }}
+            link={{ to: companyPath(user, "/dashboard/leaves"), label: "Review leave" }}
             state={reviewLeave}
           >
             {reviewLeave.data && (
@@ -163,7 +164,7 @@ export default function DashboardOverview({ user, hasPermission }) {
         {can("attendance") && (
           <OverviewPanel
             title={organizationName ? `Today at ${organizationName}` : "Today across the organization"}
-            link={{ to: "/dashboard/attendance", label: "Today's attendance" }}
+            link={{ to: companyPath(user, "/dashboard/attendance"), label: "Today's attendance" }}
             state={orgAttendance}
           >
             {orgAttendance.data && (
@@ -190,7 +191,7 @@ export default function DashboardOverview({ user, hasPermission }) {
         {can("team") && (
           <OverviewPanel
             title="Your team today"
-            link={{ to: "/dashboard/team", label: "My team" }}
+            link={{ to: companyPath(user, "/dashboard/team"), label: "My team" }}
             state={team}
           >
             {team.data && (
@@ -205,7 +206,7 @@ export default function DashboardOverview({ user, hasPermission }) {
         {appliesForLeave && (
           <OverviewPanel
             title="Your leave"
-            link={{ to: "/dashboard/leaves", label: "Apply or see all" }}
+            link={{ to: companyPath(user, "/dashboard/leaves"), label: "Apply or see all" }}
             state={myLeave}
           >
             {myLeave.data && <MyLeave requests={myLeave.data} />}

@@ -7,7 +7,8 @@ export const loginUser = async (req, res) => {
 
     try {
 
-        const { email, password } = req.body;
+        // slug is sent from a company's own login page (/acme/login).
+        const { email, password, slug } = req.body;
 
         if (!email || !password) {
             return res.status(400).json({
@@ -24,7 +25,7 @@ export const loginUser = async (req, res) => {
                 email: true,
                 password: true,
                 is_active: true,
-                organization: { select: { id: true, name: true } },
+                organization: { select: { id: true, name: true, slug: true } },
                 user_roles: {
                     select: {
                         roles: {
@@ -43,7 +44,9 @@ export const loginUser = async (req, res) => {
             },
         });
 
-        if (!user) {
+        // A company's login page only signs in that company's users; anyone
+        // else gets the same answer as an unknown email.
+        if (!user || (slug !== undefined && user.organization.slug !== slug)) {
             return res.status(401).json({
                 message: "Invalid email or password"
             })

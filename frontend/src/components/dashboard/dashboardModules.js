@@ -1,3 +1,5 @@
+import { companyPath } from "../../utils/companyPath";
+
 // One place decides who can open each dashboard module. The sidebar, the
 // overview and the module content all read from here, so a link is only
 // shown when its page will actually work. Each `canAccess` mirrors the
@@ -83,12 +85,13 @@ export const dashboardModules = [
     key: "profile",
     title: "My Profile",
     icon: "bi-person",
-    path: "/user/profile",
+    path: "/profile",
     canAccess: (user) => isSelfService(user),
   },
 ];
 
-export const modulePath = (module) => module.path ?? `/dashboard/${module.key}`;
+export const modulePath = (module, user) =>
+  companyPath(user, module.path ?? `/dashboard/${module.key}`);
 
 export const findModule = (key) =>
   dashboardModules.find((module) => module.key === key);

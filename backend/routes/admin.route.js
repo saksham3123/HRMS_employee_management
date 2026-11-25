@@ -7,6 +7,8 @@ import {
 import { getAllTodayAttendance, getMonthlyPayrollSummary, getUserMonthlyReport , getMonthlyPayrollByEmployee } from "../controllers/attendance.controller.js"
 import requirePermission from "../middleware/permission.middleware.js"
 import { assignReportingManager, getReportingManager, removeReportingManager, updateReportingManager } from "../controllers/reporting.controller.js";
+import { exportUsers } from "../controllers/exployeeExport.controller.js";
+import { importUsers } from "../controllers/employeeImport.controller.js";
 
 
 const router = express.Router()
@@ -67,4 +69,12 @@ router.delete(
   requirePermission("employees.update"),
   removeReportingManager
 );
+
+// Bulk create from the Excel import form (the browser sends the mapped rows as JSON).
+router.post("/users/import", adminMiddleware, requirePermission("users.create"), importUsers)
+
+
+
+// Excel download of the company's employees.
+router.get("/users/export", requirePermission("users.view"), exportUsers)
 export default router

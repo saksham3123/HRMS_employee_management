@@ -13,12 +13,15 @@ import Departments from "../admin/departments/Departments";
 import Designations from "../admin/designations/Designations";
 import ManagerAssignment from "../admin/managers/ManagerAssignment";
 import ManagerTeam from "./ManagerTeam";
+import { exportEmployeesExcel } from "../../services/adminService";
+import ImportEmployees from "../admin/ImportEmployees";
 
 export default function DashboardModuleContent({
   activeModule,
   user,
   hasPermission,
   onCreateEmployee,
+  onEmployeesImported,
   creatingEmployee,
   employeeError,
   employeeSuccess,
@@ -38,6 +41,8 @@ export default function DashboardModuleContent({
   attendanceHistory,
 }) {
   const [showCreateEmployee, setShowCreateEmployee] = useState(false);
+    const [showImport, setShowImport] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
   const canCreateEmployee = user?.role === "admin" && hasPermission("users.create");
 
   // Access to each module is checked once, in pages/Dashboard.jsx, using
@@ -50,7 +55,21 @@ export default function DashboardModuleContent({
     return (
       <div className="space-y-8">
         {canCreateEmployee && (
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setShowImport(true)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Import from Excel
+            </button>
+            <button
+              type="button"
+              onClick={() => exportEmployeesExcel().catch((err) => alert(err.message))}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Export to Excel
+            </button>
             <button
               type="button"
               onClick={() => setShowCreateEmployee(true)}
@@ -90,6 +109,22 @@ export default function DashboardModuleContent({
             creating={creatingEmployee}
           />
         </Modal>
+
+                <Modal
+          open={showImport}
+          title="Import employees from Excel"
+          description="Match the columns in your sheet to PeopleDesk fields, then import."
+          onClose={() => setShowImport(false)}
+          busy={importBusy}
+          size="lg"
+        >
+          <ImportEmployees
+            onImported={onEmployeesImported}
+            onClose={() => setShowImport(false)}
+            onBusyChange={setImportBusy}
+          />
+        </Modal>
+        
         <EmployeeList
           employees={employees}
           loading={employeesLoading}

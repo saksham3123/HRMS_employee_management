@@ -44,7 +44,11 @@ export default function OrganizationDetails({ organizationId, refreshKey, onClos
       <div className="dashq-panel-heading">
         <div>
           <h2>{organization?.name ?? "Company details"}</h2>
-          <p>{organization ? `Slug: ${organization.slug}` : "Loading…"}</p>
+          <p>
+            {organization
+              ? `Login link: ${window.location.origin}/${organization.slug}/login`
+              : "Loading…"}
+          </p>
         </div>
         <button
           type="button"

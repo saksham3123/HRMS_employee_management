@@ -14,6 +14,24 @@ const DEFAULT_LEAVE_TYPES = ["Annual Leave", "Sick Leave", "Personal Leave"];
 // lowercase letters, numbers and single hyphens: "acme", "acme-labs"
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+// Company pages live at /<slug>/..., so a slug can't be a top-level path the
+// app already uses.
+const RESERVED_SLUGS = new Set([
+    "admin",
+    "api",
+    "app",
+    "assets",
+    "dashboard",
+    "dashq-assets",
+    "get-started",
+    "login",
+    "logout",
+    "platform",
+    "profile",
+    "user",
+    "www",
+]);
+
 const toId = (value) => {
     const id = Number(value);
     return Number.isInteger(id) && id > 0 ? id : null;
@@ -101,6 +119,36 @@ export const platformLogin = async (req, res) => {
 
         return res.status(500).json({
             message: "Platform login failed",
+        });
+    }
+};
+
+// GET /api/public/organizations/:slug
+// The company name for its own login page (/acme/login). Unknown and
+// suspended companies get the same 404, so the page reveals neither.
+export const getPublicOrganization = async (req, res) => {
+    const slug = String(req.params.slug).toLowerCase();
+
+    if (!SLUG_PATTERN.test(slug)) {
+        return res.status(404).json({ message: "Organization not found" });
+    }
+
+    try {
+        const organization = await prisma.organizations.findFirst({
+            where: { slug, status: "active" },
+            select: { name: true, slug: true },
+        });
+
+        if (!organization) {
+            return res.status(404).json({ message: "Organization not found" });
+        }
+
+        return res.status(200).json({ organization });
+    } catch (error) {
+        console.error("Get public organization error:", error);
+
+        return res.status(500).json({
+            message: "Failed to load organization",
         });
     }
 };
@@ -234,6 +282,10 @@ export const createOrganization = async (req, res) => {
         return res.status(400).json({
             message: "Slug must be 3-60 characters: lowercase letters, numbers and hyphens",
         });
+    }
+
+    if (RESERVED_SLUGS.has(normalizedSlug)) {
+        return res.status(400).json({ message: "This slug is reserved. Choose another one" });
     }
 
     if (!(await isAssignablePlan(plan))) {

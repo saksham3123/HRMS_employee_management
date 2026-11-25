@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { companyPath } from "../../utils/companyPath";
 
-export default function LoginForm() {
+// `slug` is set on a company's own login page (/acme/login).
+export default function LoginForm({ slug }) {
     const { login } = useAuth();
     const navigate = useNavigate();
 
@@ -19,10 +21,9 @@ export default function LoginForm() {
 
         try {
 
-            const loggedInUser = await login(email, password);
+            const loggedInUser = await login(email, password, slug);
 
-            
-navigate("/dashboard", { replace: true });
+            navigate(companyPath(loggedInUser), { replace: true });
 
 
         } catch (err) {

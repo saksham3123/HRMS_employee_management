@@ -41,3 +41,7 @@ hrms_backup_*
 skills-lock.json
 
 PRODUCT.md
+# Personal learning notes (kept out of git, like .env)
+PeopleDesk-Learning-Guide.docx
+PeopleDesk-security-Review.docx
+
