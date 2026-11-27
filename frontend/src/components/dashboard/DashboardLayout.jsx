@@ -5,6 +5,9 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { accessibleModules, findModule, modulePath } from "./dashboardModules";
 import ThemeToggle from "../common/ThemeToggle";
 import { companyPath } from "../../utils/companyPath";
+import Swal from "sweetalert2";
+import Modal from "../common/Modal";
+import ChangePasswordForm from "../auth/ChangePassword";
 
 const ROLE_LABELS = { admin: "Admin", hr: "HR", manager: "Manager", employee: "Employee" };
 
@@ -14,6 +17,8 @@ export default function DashboardLayout({ children, activeItem = "overview" }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const accountMenuRef = useRef(null);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordBusy, setPasswordBusy] = useState(false);
   const visibleNavigation = accessibleModules(user, hasPermission);
   const activeModule = findModule(activeItem);
   // Sessions from before the organization was added to the login response
@@ -41,6 +46,25 @@ export default function DashboardLayout({ children, activeItem = "overview" }) {
       document.removeEventListener("pointerdown", handlePointerDown);
     };
   }, [accountDialogOpen]);
+
+  const handlePasswordChanged = async () => {
+    setPasswordOpen(false);
+    // Wait for the pop-up to close: SweetAlert can't show above an open <dialog>.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    Swal.fire({
+      icon: "success",
+      title: "Password changed",
+      text: "Use your new password the next time you sign in.",
+      buttonsStyling: false,
+      customClass: {
+        popup: "pd-swal-popup",
+        title: "pd-swal-title",
+        htmlContainer: "pd-swal-text",
+        actions: "pd-swal-actions",
+        confirmButton: "pd-swal-button is-primary",
+      },
+    });
+  };
 
   useEffect(() => {
     if (!mobileOpen) return undefined;
@@ -134,6 +158,17 @@ export default function DashboardLayout({ children, activeItem = "overview" }) {
                   )}
                   <button
                     type="button"
+                    className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-700 hover:bg-slate-50"
+                    onClick={() => {
+                      setAccountDialogOpen(false);
+                      setPasswordOpen(true);
+                    }}
+                  >
+                    <i className="bi bi-key" />
+                    Change password
+                  </button>
+                  <button
+                    type="button"
                     className="dashq-account-logout"
                     onClick={logout}
                   >
@@ -147,6 +182,19 @@ export default function DashboardLayout({ children, activeItem = "overview" }) {
         </header>
         <div className="dashq-main-content">{children}</div>
       </main>
+      <Modal
+        open={passwordOpen}
+        title="Change password"
+        description="Choose a new password for your PeopleDesk account."
+        onClose={() => setPasswordOpen(false)}
+        busy={passwordBusy}
+      >
+        <ChangePasswordForm
+          onDone={handlePasswordChanged}
+          onCancel={() => setPasswordOpen(false)}
+          onBusyChange={setPasswordBusy}
+        />
+      </Modal>
     </div>
   );
 }

@@ -3,6 +3,8 @@ import bcrypt from "bcrypt";
 import prisma from "../config/prisma.js";
 import { getToday } from "../config/time.js";
 import { getSeatUsage } from "../helpers/organization.helper.js";
+import { sendWelcomeEmails } from "../helpers/notify.helper.js";
+import { isMailEnabled } from "../config/mailer.js";
 
 // POST /api/admin/users/import
 //
@@ -305,6 +307,13 @@ export const importUsers = async (req, res) => {
 
         failed.sort((a, b) => a.row - b.row);
 
+        // Welcome emails go out in the background, one by one, after the
+        // response; the import doesn't wait for them.
+        sendWelcomeEmails(
+            req.user.organizationId,
+            created.map((person) => ({ name: person.name, email: person.email, password: person.temp_password }))
+        );
+
         return res.status(created.length ? 201 : 200).json({
             message: `${created.length} of ${rows.length} employees imported`,
             summary: {
@@ -316,6 +325,8 @@ export const importUsers = async (req, res) => {
             failed,
             created_departments: createdDepartments,
             created_designations: createdDesignations,
+            // true = welcome emails with the login details are on their way
+            welcome_emails: created.length > 0 && isMailEnabled(),
         });
     } catch (error) {
         console.error("Import users error:", error);

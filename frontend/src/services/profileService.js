@@ -8,3 +8,12 @@ export const updateProfile = (profileData) =>
     method: "PUT",
     body: JSON.stringify(profileData),
   });
+
+
+  
+// Any logged-in user changes their own password.
+export const changePassword = (currentPassword, newPassword) =>
+  apiRequest("/users/password", {
+    method: "PUT",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });

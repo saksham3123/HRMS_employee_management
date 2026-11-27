@@ -12,6 +12,7 @@ import designationRoutes from "./routes/designation.route.js";
 import managerRoutes from "./routes/manager.route.js"
 import platformRoutes from "./routes/platform.route.js";
 import publicRoutes from "./routes/public.route.js";
+import { verifyMailer } from "./config/mailer.js";
 
 
 const app = express();
@@ -46,6 +47,9 @@ const startServer = async () => {
     await prisma.$queryRaw`SELECT 1`;
 
     console.log("PostgreSQL connected");
+
+    // Logs "Email ready" or why it failed; the server starts either way.
+    verifyMailer();
 
     app.listen(port, () => {
       console.log(`Example app listening on port ${port}`);

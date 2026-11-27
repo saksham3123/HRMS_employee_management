@@ -1,5 +1,5 @@
 import express from "express"
-import { loginUser , getProfile , updateProfile } from "../controllers/user.controller.js"
+import { loginUser , getProfile , updateProfile, changePassword } from "../controllers/user.controller.js"
 
 import authMiddleware from "../middleware/auth.middleware.js"
 import userValidation from "../middleware/userValidation.middleware.js"
@@ -19,5 +19,8 @@ router.get(
     return getReportingManager(req, res, next);
   }
 );
+
+// Any logged-in user changes their own password
+router.put("/password" , authMiddleware , changePassword)
 
 export default router

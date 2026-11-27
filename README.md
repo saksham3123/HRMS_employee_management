@@ -127,7 +127,16 @@ HOURLY_RATE=100
 # First admin account created by scripts/seedAdmin.js
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=change_me
+
+# Email (optional: without these, emails are skipped and the app still works)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=yourcompany@gmail.com
+SMTP_PASS=your_16_letter_app_password
+MAIL_FROM="PeopleDesk <yourcompany@gmail.com>"
 ```
+
+For Gmail, `SMTP_PASS` must be an [App Password](https://myaccount.google.com/apppasswords) (needs 2-Step Verification), not your normal password. Check the settings with `node scripts/testMail.js you@example.com`.
 
 If your password contains special characters, URL-encode them in `DATABASE_URL`.
 

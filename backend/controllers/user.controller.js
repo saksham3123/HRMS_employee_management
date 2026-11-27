@@ -2,6 +2,7 @@ import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import prisma from "../config/prisma.js";
 import { getToday } from "../config/time.js";
+import { sendWelcomeEmails } from "../helpers/notify.helper.js";
 
 export const loginUser = async (req, res) => {
 
@@ -216,6 +217,13 @@ export const registerUser = async (req, res) => {
                 },
             };
         });
+
+                // Welcome email in the background: the response doesn't wait for Gmail.
+        if (result.status === 201) {
+            sendWelcomeEmails(req.user.organizationId, [
+                { name: normalizedName, email: normalizedEmail, password },
+            ]);
+        }
 
         return res.status(result.status).json(result.body);
     } catch (error) {
@@ -753,3 +761,63 @@ export const updateEmployee = async (req, res) => {
         });
     }
 };
+
+
+
+// PUT /api/users/password  { currentPassword, newPassword }
+// Any logged-in user changes their own password (all roles).
+export const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body ?? {};
+
+        if (typeof currentPassword !== "string" || !currentPassword ||
+            typeof newPassword !== "string" || !newPassword) {
+            return res.status(400).json({ message: "Current and new password are required" });
+        }
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({ message: "New password must be at least 8 characters" });
+        }
+
+        // bcrypt only uses the first 72 bytes; anything longer would be
+        // silently cut, so refuse it instead.
+        if (Buffer.byteLength(newPassword, "utf8") > 72) {
+            return res.status(400).json({ message: "New password is too long (max 72 characters)" });
+        }
+
+        if (newPassword === currentPassword) {
+            return res.status(400).json({ message: "New password must be different from the current one" });
+        }
+
+        const user = await req.db.users.findUnique({
+            where: { id: req.user.userId },
+            select: { id: true, password: true },
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const isCurrentCorrect = await bcrypt.compare(currentPassword, user.password);
+
+        // 400, not 401: the frontend treats 401 as "session expired" and logs
+        // the person out, which is wrong for a mistyped password.
+        if (!isCurrentCorrect) {
+            return res.status(400).json({ message: "Current password is incorrect" });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await req.db.users.update({
+            where: { id: user.id },
+            data: { password: hashedPassword, updated_at: new Date() },
+        });
+
+        return res.status(200).json({ message: "Password changed successfully" });
+    } catch (error) {
+        console.error("Change password error:", error);
+        return res.status(500).json({ message: "Failed to change password" });
+    }
+};
+
+
